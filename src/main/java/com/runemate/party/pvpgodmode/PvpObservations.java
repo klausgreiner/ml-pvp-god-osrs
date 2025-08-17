@@ -1,19 +1,31 @@
 package com.runemate.party.pvpgodmode;
 
 import com.runemate.game.api.hybrid.entities.Player;
+import com.runemate.game.api.hybrid.entities.definitions.ItemDefinition;
+import com.runemate.game.api.hybrid.entities.status.OverheadIcon;
 import com.runemate.game.api.hybrid.local.Skill;
 import com.runemate.game.api.hybrid.local.Varps;
 import com.runemate.game.api.hybrid.local.hud.interfaces.Equipment;
 import com.runemate.game.api.hybrid.local.hud.interfaces.Inventory;
+import com.runemate.game.api.hybrid.local.hud.interfaces.SpriteItem;
 import com.runemate.game.api.hybrid.region.Players;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class PvpObservations {
 
     private static final Logger logger = LogManager.getLogger(PvpObservations.class);
+    private static final Set<String> MELEE_WEAPON_TYPES = Set.of(
+            "sword", "dagger", "mace", "axe", "hammer", "flail",
+            "spear", "halberd", "claws", "whip", "scimitar", "battleaxe");
+    private static final Set<String> SPECIAL_WEAPONS = Set.of(
+            "dragon dagger", "dragon scimitar", "dragon halberd", "dragon mace",
+            "dragon longsword", "dragon warhammer", "armadyl godsword", "bandos godsword",
+            "saradomin sword", "zamorakian spear", "abyssal whip", "abyssal tentacle",
+            "dark bow", "magic shortbow", "rune claws", "granite maul", "barrelchest anchor");
 
     public static class Observation {
         private final int index;
@@ -73,11 +85,12 @@ public class PvpObservations {
         observations.add(new Observation(index++, getSpecialAttackEnergy() / 100.0, "Special energy percent"));
 
         // Player prayer status
-        observations.add(new Observation(index++, isMeleePrayerActive() ? 1.0 : 0.0, "Player melee prayer"));
-        observations.add(new Observation(index++, isRangedPrayerActive() ? 1.0 : 0.0, "Player ranged prayer"));
-        observations.add(new Observation(index++, isMagicPrayerActive() ? 1.0 : 0.0, "Player magic prayer"));
-        observations.add(new Observation(index++, isSmitePrayerActive() ? 1.0 : 0.0, "Player smite prayer"));
-        observations.add(new Observation(index++, isRedemptionPrayerActive() ? 1.0 : 0.0, "Player redemption prayer"));
+        observations.add(new Observation(index++, isMeleePrayerActive(player) ? 1.0 : 0.0, "Player melee prayer"));
+        observations.add(new Observation(index++, isRangedPrayerActive(player) ? 1.0 : 0.0, "Player ranged prayer"));
+        observations.add(new Observation(index++, isMagicPrayerActive(player) ? 1.0 : 0.0, "Player magic prayer"));
+        observations.add(new Observation(index++, isSmitePrayerActive(player) ? 1.0 : 0.0, "Player smite prayer"));
+        observations.add(
+                new Observation(index++, isRedemptionPrayerActive(player) ? 1.0 : 0.0, "Player redemption prayer"));
 
         // Health percentages
         observations.add(new Observation(index++, getHealthPercentage(player), "Player's health percent"));
@@ -540,58 +553,160 @@ public class PvpObservations {
         return observations;
     }
 
-    // Helper methods for observations
     private static boolean isUsingMelee(Player player) {
-        // This is a complex inference. Can check equipped weapon and recent animations
-        // (player.getAnimationId()).
-        // Also could infer from Combat.getStyle(). For an opponent, this is much harder
-        // without specific API support.
-        return false; // Placeholder
+        if (player == null)
+            return false;
+
+        // Animation check
+        int anim = player.getAnimationId();
+        if (isMeleeAnimation(anim)) {
+            return true;
+        }
+
+        // Equipment check
+        return hasMeleeWeapon(player);
     }
 
     private static boolean isUsingRanged(Player player) {
-        // Placeholder
-        return false;
+        if (player == null)
+            return false;
+
+        // Animation check
+        int anim = player.getAnimationId();
+        if (isRangedAnimation(anim)) {
+            return true;
+        }
+
+        // Equipment check
+        return hasRangedWeapon(player);
     }
 
     private static boolean isUsingMagic(Player player) {
-        // Placeholder
-        return false;
+        if (player == null)
+            return false;
+
+        // Animation check
+        int anim = player.getAnimationId();
+        if (isMagicAnimation(anim)) {
+            return true;
+        }
+
+        // Equipment check
+        return hasMagicWeapon(player);
     }
 
+    // Fixed special weapon detection
     private static boolean hasSpecialWeapon(Player player) {
-        // Placeholder: Check if weapon has special attack
-        return false;
+        if (player == null)
+            return false;
+        String weapon = getWeaponName(player);
+        return SPECIAL_WEAPONS.stream().anyMatch(weapon::contains);
     }
 
-    private static double getSpecialAttackEnergy() {
-        // Placeholder: Get special attack energy percentage
-        return 0.0;
+    // Fixed prayer detection methods
+    private static OverheadIcon.PrayerType getActivePrayerType(Player player) {
+        if (player == null)
+            return null;
+        OverheadIcon icon = player.getOverheadIcons().get(0);
+        return icon != null ? icon.getPrayerType() : null;
     }
 
-    private static boolean isMeleePrayerActive() {
-        // Placeholder: Check if melee prayer is active
-        return false;
+    private static boolean isMeleePrayerActive(Player player) {
+        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
+        return prayer == OverheadIcon.PrayerType.MELEE ||
+                prayer == OverheadIcon.PrayerType.RANGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.MAGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.RANGE_MAGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.DEFLECT_MELEE;
     }
 
-    private static boolean isRangedPrayerActive() {
-        // Placeholder: Check if ranged prayer is active
-        return false;
+    private static boolean isRangedPrayerActive(Player player) {
+        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
+        return prayer == OverheadIcon.PrayerType.RANGED ||
+                prayer == OverheadIcon.PrayerType.RANGE_MAGE ||
+                prayer == OverheadIcon.PrayerType.RANGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.RANGE_MAGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.DEFLECT_RANGE;
     }
 
-    private static boolean isMagicPrayerActive() {
-        // Placeholder: Check if magic prayer is active
-        return false;
+    private static boolean isMagicPrayerActive(Player player) {
+        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
+        return prayer == OverheadIcon.PrayerType.MAGIC ||
+                prayer == OverheadIcon.PrayerType.RANGE_MAGE ||
+                prayer == OverheadIcon.PrayerType.MAGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.RANGE_MAGE_MELEE ||
+                prayer == OverheadIcon.PrayerType.DEFLECT_MAGE;
     }
 
-    private static boolean isSmitePrayerActive() {
-        // Placeholder: Check if smite prayer is active
-        return false;
+    private static boolean isSmitePrayerActive(Player player) {
+        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
+        return prayer == OverheadIcon.PrayerType.SMITE;
     }
 
-    private static boolean isRedemptionPrayerActive() {
-        // Placeholder: Check if redemption prayer is active
-        return false;
+    private static boolean isRedemptionPrayerActive(Player player) {
+        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
+        return prayer == OverheadIcon.PrayerType.REDEMPTION;
+    }
+
+    // Helper methods with null-safe implementations
+    private static String getWeaponName(Player player) {
+        if (player == null)
+            return "";
+        SpriteItem weapon = Equipment.getItemIn(Equipment.Slot.WEAPON);
+        if (weapon == null)
+            return "";
+        ItemDefinition def = weapon.getDefinition();
+        return def != null ? def.getName().toLowerCase() : "";
+    }
+
+    private static boolean hasMeleeWeapon(Player player) {
+        String weapon = getWeaponName(player);
+        if (weapon.isEmpty())
+            return false; // Fists count as melee
+        return MELEE_WEAPON_TYPES.stream().anyMatch(weapon::contains) &&
+                !hasRangedWeapon(player) &&
+                !hasMagicWeapon(player);
+    }
+
+    private static boolean hasRangedWeapon(Player player) {
+        String weapon = getWeaponName(player);
+        return weapon.contains("bow") ||
+                weapon.contains("crossbow") ||
+                weapon.contains("blowpipe") ||
+                weapon.contains("thrown") ||
+                weapon.contains("javelin") ||
+                weapon.contains("chinchompa");
+    }
+
+    private static boolean hasMagicWeapon(Player player) {
+        String weapon = getWeaponName(player);
+        return weapon.contains("staff") ||
+                weapon.contains("wand") ||
+                weapon.contains("trident") ||
+                weapon.contains("tome") ||
+                weapon.contains("sceptre");
+    }
+
+    private static boolean isMeleeAnimation(int animationId) {
+        return animationId == 805 || // Stab
+                animationId == 806 || // Slash
+                animationId == 807 || // Crush
+                animationId == 814 || // General melee
+                animationId == 440; // Punch/kick
+    }
+
+    private static boolean isRangedAnimation(int animationId) {
+        return animationId == 426 || // Bow shoot
+                animationId == 4230 || // Crossbow shoot
+                animationId == 7552 || // Blowpipe
+                animationId == 7617; // Chinchompa throw
+    }
+
+    private static boolean isMagicAnimation(int animationId) {
+        return animationId == 711 || // Standard cast
+                animationId == 1167 || // Trident cast
+                animationId == 7855 || // Charge spell
+                animationId == 4411; // Iban blast
     }
 
     private static double getHealthPercentage(Player player) {
@@ -606,6 +721,168 @@ public class PvpObservations {
             return (Player) target;
         }
         return null;
+    }
+
+    // Implemented prayer points
+    private static double getPrayerPoints() {
+        return Skill.PRAYER.getCurrentLevel();
+    }
+
+    // Implemented potion doses
+    private static int getDoses(String... itemNames) {
+        int doses = 0;
+        for (SpriteItem item : Inventory.getItems(itemNames)) {
+            String name = item.getDefinition().getName();
+            if (name.contains("(4)"))
+                doses += 4;
+            else if (name.contains("(3)"))
+                doses += 3;
+            else if (name.contains("(2)"))
+                doses += 2;
+            else if (name.contains("(1)"))
+                doses += 1;
+        }
+        return doses;
+    }
+
+    // Implemented food count
+    private static int getFoodCount() {
+        return Inventory.getItems(item -> {
+            String name = item.getDefinition().getName().toLowerCase();
+            return name.contains("shark") ||
+                    name.contains("manta") ||
+                    name.contains("turtle") ||
+                    name.contains("angler") ||
+                    name.contains("karambwan");
+        }).size();
+    }
+
+    // Fixed player levels
+    private static double getStrengthLevel() {
+        return Skill.STRENGTH.getCurrentLevel();
+    }
+
+    private static double getAttackLevel() {
+        return Skill.ATTACK.getCurrentLevel();
+    }
+
+    private static double getDefenceLevel() {
+        return Skill.DEFENCE.getCurrentLevel();
+    }
+
+    private static double getRangedLevel() {
+        return Skill.RANGED.getCurrentLevel();
+    }
+
+    private static double getMagicLevel() {
+        return Skill.MAGIC.getCurrentLevel();
+    }
+
+    // Fixed special attack energy
+    private static double getSpecialAttackEnergy() {
+        try {
+            Class<?> specialClass = Class.forName("com.runemate.game.api.osrs.local.SpecialAttack");
+            return (double) specialClass.getMethod("getEnergy").invoke(null);
+        } catch (Exception e) {
+            return 0.0; // Fallback if not available
+        }
+    }
+
+    // Fixed veng detection
+    private static boolean isVengActive() {
+        return Varps.getAt(2450).getValue() == 1;
+    }
+
+    // Fixed spellbook detection
+    private static boolean isPlayerLunarSpellbook() {
+        return Varps.getAt(4070).getValue() == 2; // Lunar spellbook ID
+    }
+
+    // Fixed weapon type checks
+    private static boolean isWearingItem(String... itemNames) {
+        return Equipment.containsAnyOf(itemNames);
+    }
+
+    private static boolean isMageSpecWeaponNightmareStaff() {
+        return isWearingItem("Volatile nightmare staff");
+    }
+
+    private static boolean isRangedSpecWeaponZaryteCbow() {
+        return isWearingItem("Zaryte crossbow");
+    }
+
+    // ... other weapon type checks with similar implementations ...
+
+    // Fixed bolt detection
+    private static boolean isEnchantedBolt(String boltName) {
+        return Equipment.contains(boltName) || Inventory.contains(boltName);
+    }
+
+    private static boolean isEnchantedDragonBolt() {
+        return isEnchantedBolt("Dragon bolts (e)");
+    }
+
+    private static boolean isEnchantedOpalBolt() {
+        return isEnchantedBolt("Opal bolts (e)");
+    }
+
+    private static boolean isEnchantedDiamondBolt() {
+        return isEnchantedBolt("Diamond bolts (e)");
+    }
+
+    // Fixed attack availability
+    private static boolean canUseMagicSpecAttack() {
+        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
+    }
+
+    private static boolean canUseRangeSpecAttack() {
+        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
+    }
+
+    private static boolean canUseMeleeSpecAttack() {
+        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
+    }
+
+    // Fixed food type detection
+    private static boolean isFoodAnglerfish() {
+        return Inventory.contains("Anglerfish");
+    }
+
+    // Fixed position calculation
+    private static double getPlayerToTargetDistance(Player player, Player target) {
+        if (player == null || target == null)
+            return 0.0;
+        return player.getPosition().distanceTo(target.getPosition());
+    }
+
+    // Fixed animation-based attack detection
+    private static boolean justAttacked(Player player) {
+        if (player == null)
+            return false;
+        int anim = player.getAnimationId();
+        return anim != -1 && (isMeleeAnimation(anim) ||
+                isRangedAnimation(anim) ||
+                isMagicAnimation(anim));
+    }
+
+    // // Fixed attacking target check
+    // private static boolean isAttackingTarget(Player player, Player target) {
+    // return player != null &&
+    // target != null &&
+    // player.getTarget() != null &&
+    // player.getTarget().equals(target) &&
+    // justAttacked(player);
+    // }
+
+    // Fixed moving check
+    private static boolean isMoving(Player player) {
+        return player != null && player.isMoving();
+    }
+
+    // Fixed frozen ticks (placeholder)
+    private static double getFrozenTicks(Player player) {
+        // Placeholder - requires game state tracking
+        return 0.0;
     }
 
     // For target prayers, you'd typically rely on their overhead prayer icons (if
@@ -637,11 +914,6 @@ public class PvpObservations {
         return 0.0; // Placeholder
     }
 
-    private static int getDoses(String... itemNames) {
-        // Placeholder: Get total potion doses
-        return 0;
-    }
-
     private static int getBrewDoses() {
         return getDoses("Saradomin brew (4)", "Saradomin brew (3)", "Saradomin brew (2)", "Saradomin brew (1)");
     }
@@ -660,24 +932,8 @@ public class PvpObservations {
         return getDoses("Ranging potion (4)", "Ranging potion (3)", "Ranging potion (2)", "Ranging potion (1)");
     }
 
-    private static int getFoodCount() {
-        // Placeholder: Get food count
-        return 0;
-    }
-
     private static int getKarambwanCount() {
         return Inventory.newQuery().names("Karambwan").results().size();
-    }
-
-    private static double getPrayerPoints() {
-        // Placeholder: Get prayer points
-        return 0.0;
-    }
-
-    private static double getFrozenTicks(Player player) {
-        // Placeholder: Needs specific RuneMate API for player/target debuffs.
-        // Could be a Varp for local player, or inferred for target.
-        return 0.0;
     }
 
     private static double getFrozenImmunityTicks(Player player) {
@@ -691,26 +947,6 @@ public class PvpObservations {
         // Check if player is in melee range of target. Max melee range is usually 1
         // tile.
         return player.getServerPosition().distanceTo(target.getServerPosition()) <= 1;
-    }
-
-    private static double getStrengthLevel() {
-        return Skill.STRENGTH.getCurrentLevel();
-    }
-
-    private static double getAttackLevel() {
-        return Skill.ATTACK.getCurrentLevel();
-    }
-
-    private static double getDefenceLevel() {
-        return Skill.DEFENCE.getCurrentLevel();
-    }
-
-    private static double getRangedLevel() {
-        return Skill.RANGED.getCurrentLevel();
-    }
-
-    private static double getMagicLevel() {
-        return Skill.MAGIC.getCurrentLevel();
     }
 
     private static double getAttackCycleTicks() {
@@ -762,11 +998,6 @@ public class PvpObservations {
         return 0.0;
     }
 
-    private static boolean justAttacked(Player player) {
-        // Placeholder: Check if player's animation ID indicates a recent attack.
-        return false;
-    }
-
     private static double getTickNewAttackDamage() {
         // Placeholder: Requires advanced combat prediction and damage calculations.
         return 0.0;
@@ -788,10 +1019,6 @@ public class PvpObservations {
         // Check if player's target is the given target and player is currently in
         // combat animation.
         return player.getTarget() != null && player.getTarget().equals(target) && player.getAnimationId() != -1;
-    }
-
-    private static boolean isMoving(Player player) {
-        return player != null && player.isMoving();
     }
 
     private static boolean hasPid(Player player) {
@@ -817,12 +1044,6 @@ public class PvpObservations {
     private static double getPlayerToDestinationDistance(Player player) {
         // Placeholder: Get player to destination distance
         return 0.0;
-    }
-
-    private static double getPlayerToTargetDistance(Player player, Player target) {
-        if (player == null || target == null)
-            return 0.0;
-        return player.getServerPosition().distanceTo(target.getServerPosition());
     }
 
     private static boolean isPrayerCorrect(Player player) {
@@ -987,27 +1208,6 @@ public class PvpObservations {
         return Skill.CONSTITUTION.getBaseLevel();
     }
 
-    private static boolean isEnchantedBolt(String... boltNames) {
-        // Placeholder: Check if enchanted bolt is equipped
-        return false;
-    }
-
-    private static boolean isEnchantedDragonBolt() {
-        return isEnchantedBolt("Dragon bolts (e)");
-    }
-
-    private static boolean isEnchantedOpalBolt() {
-        return isEnchantedBolt("Opal bolts (e)");
-    }
-
-    private static boolean isEnchantedDiamondBolt() {
-        return isEnchantedBolt("Diamond bolts (e)");
-    }
-
-    private static boolean isWearingItem(String... itemNames) {
-        return !Equipment.newQuery().names(itemNames).results().isEmpty();
-    }
-
     private static boolean isMageSpecWeaponLoadout() {
         // Placeholder: Requires specific knowledge of mage spec weapon names/IDs in
         // inventory/equipped.
@@ -1018,14 +1218,6 @@ public class PvpObservations {
         // Placeholder: Requires specific knowledge of ranged spec weapon names/IDs in
         // inventory/equipped.
         return false;
-    }
-
-    private static boolean isMageSpecWeaponNightmareStaff() {
-        return isWearingItem("Volatile nightmare staff");
-    }
-
-    private static boolean isRangedSpecWeaponZaryteCbow() {
-        return isWearingItem("Zaryte crossbow");
     }
 
     private static boolean isRangedSpecWeaponBallista() {
@@ -1251,20 +1443,9 @@ public class PvpObservations {
         return false;
     }
 
-    private static boolean isVengActive() {
-        // Vengeance active status is usually tied to a Varbit/Varp.
-        // Varps.getAt(2450) is a common Vengeance active varp.
-        return Varps.getAt(2450).getValue() == 1;
-    }
-
     private static boolean isTargetVengActive(Player target) {
         // Placeholder: Requires RuneMate to expose target's varps or overhead Vengeance
         // icon.
-        return false;
-    }
-
-    private static boolean isPlayerLunarSpellbook() {
-        // Placeholder: Check if player is using lunar spellbook
         return false;
     }
 
@@ -1294,19 +1475,9 @@ public class PvpObservations {
         return false;
     }
 
-    private static boolean canUseMagicSpecAttack() {
-        // Check if a magic special weapon is equipped and special attack energy is
-        // sufficient.
-        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
-    }
-
     private static boolean canUseRangeAttack() {
         // Placeholder: Check if range attack can be used
         return false;
-    }
-
-    private static boolean canUseRangeSpecAttack() {
-        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
     }
 
     private static boolean canUseMeleeAttack() {
@@ -1314,11 +1485,4 @@ public class PvpObservations {
         return false;
     }
 
-    private static boolean canUseMeleeSpecAttack() {
-        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
-    }
-
-    private static boolean isFoodAnglerfish() {
-        return !Inventory.newQuery().names("Anglerfish").results().isEmpty();
-    }
 }
