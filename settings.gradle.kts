@@ -1,4 +1,4 @@
-rootProject.name = "sample-bots"
+rootProject.name = "pvp-god-mode"
 
 pluginManagement {
     repositories {

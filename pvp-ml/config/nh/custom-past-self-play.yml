@@ -1,0 +1,5 @@
+---
+CustomPastSelfPlay:
+  import:
+    - PastSelfPlay
+  remote-env-port: 7070
