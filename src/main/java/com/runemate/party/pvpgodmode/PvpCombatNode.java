@@ -6,6 +6,9 @@ import com.runemate.game.api.script.framework.tree.LeafTask;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.runemate.game.api.hybrid.entities.Actor;
+import com.runemate.game.api.hybrid.entities.Player;
+
 import java.util.List;
 
 public class PvpCombatNode extends LeafTask {
@@ -14,7 +17,8 @@ public class PvpCombatNode extends LeafTask {
     private final PvpGodModeSettings settings;
     private PvpRlModel rlModel;
     private long lastActionTime = 0;
-    private static final long ACTION_COOLDOWN = 600;
+    private static final long ACTION_COOLDOWN = 300;
+    private Actor currentTarget;
 
     public PvpCombatNode(PvpGodModeSettings settings) {
         this.settings = settings;
@@ -28,6 +32,14 @@ public class PvpCombatNode extends LeafTask {
             return;
         }
 
+        validateAndAcquireTarget(player);
+
+        if (currentTarget == null) {
+            logger.info("No target found, skipping combat logic");
+            Execution.delay(300);
+            return;
+        }
+
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastActionTime < ACTION_COOLDOWN) {
             Execution.delay(50);
@@ -35,7 +47,7 @@ public class PvpCombatNode extends LeafTask {
         }
 
         try {
-            List<PvpObservations.Observation> observations = PvpObservations.getCurrentObservations();
+            List<PvpObservations.Observation> observations = PvpObservations.getCurrentObservations(currentTarget);
 
             if (observations.isEmpty()) {
                 logger.warn("No observations available");
@@ -58,6 +70,7 @@ public class PvpCombatNode extends LeafTask {
                 }
 
                 modelOutput = rlModel.getAction(observations);
+
                 logger.info("RL Model decision: Actions {}, Confidence: {:.1f}%, Win Probability: {:.1f}%",
                         java.util.Arrays.toString(modelOutput.getActionIndices()),
                         String.format("%.1f", modelOutput.getConfidence() * 100),
@@ -106,5 +119,20 @@ public class PvpCombatNode extends LeafTask {
 
     public PvpRlModel getRlModel() {
         return rlModel;
+    }
+
+    private void validateAndAcquireTarget(Player player) {
+        if (currentTarget != null && (!currentTarget.isValid() || currentTarget.getHealthGauge() == null
+                || currentTarget.getHealthGauge().getPercent() == 0)) {
+            logger.info("Target {} is no longer valid or has died.", currentTarget.getName());
+            currentTarget = null;
+        }
+
+        if (currentTarget == null) {
+            currentTarget = Players.newQuery().filter(p -> !p.equals(player)).results().nearest();
+            if (currentTarget != null) {
+                logger.info("New target acquired: {}", currentTarget.getName());
+            }
+        }
     }
 }

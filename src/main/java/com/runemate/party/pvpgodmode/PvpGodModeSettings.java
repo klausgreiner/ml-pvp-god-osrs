@@ -1,6 +1,7 @@
 package com.runemate.party.pvpgodmode;
 
-import com.runemate.ui.setting.annotation.open.*;
+import com.runemate.ui.setting.annotation.open.SettingsGroup;
+import com.runemate.ui.setting.annotation.open.Setting;
 import com.runemate.ui.setting.open.Settings;
 
 @SettingsGroup
@@ -15,4 +16,5 @@ public interface PvpGodModeSettings extends Settings {
     default String getModelPath() {
         return "FineTunedNh";
     }
+
 }

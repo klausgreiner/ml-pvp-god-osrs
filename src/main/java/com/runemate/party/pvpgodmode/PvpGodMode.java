@@ -5,6 +5,7 @@ import com.runemate.game.api.script.framework.tree.TreeTask;
 import com.runemate.game.api.script.framework.listeners.SettingsListener;
 import com.runemate.game.api.script.framework.listeners.events.SettingChangedEvent;
 import com.runemate.ui.setting.annotation.open.SettingsProvider;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -83,5 +84,6 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
         public String getModelPath() {
             return "FineTunedNh";
         }
+
     }
 }

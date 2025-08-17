@@ -1,5 +1,6 @@
 package com.runemate.party.pvpgodmode;
 
+import com.runemate.game.api.hybrid.entities.Actor;
 import com.runemate.game.api.hybrid.entities.Player;
 import com.runemate.game.api.hybrid.entities.definitions.ItemDefinition;
 import com.runemate.game.api.hybrid.local.Skill;
@@ -71,7 +72,7 @@ public class PvpObservations {
         return 176;
     }
 
-    public static List<Observation> getCurrentObservations() {
+    public static List<Observation> getCurrentObservations(Actor target) {
         List<Observation> observations = new ArrayList<>();
         int index = 0;
 
@@ -107,33 +108,34 @@ public class PvpObservations {
         observations.add(new Observation(index++, getHealthPercentage(player), "Player's health percent"));
 
         // Target observations
-        Player target = getCurrentTarget();
-        if (target != null) {
-            observations.add(new Observation(index++, getHealthPercentage(target), "Target's health percent"));
-            observations.add(new Observation(index++, isUsingMelee(target) ? 1.0 : 0.0, "Target using melee"));
-            observations.add(new Observation(index++, isUsingRanged(target) ? 1.0 : 0.0, "Target using ranged"));
-            observations.add(new Observation(index++, isUsingMagic(target) ? 1.0 : 0.0, "Target using mage"));
-            observations.add(new Observation(index++, hasSpecialWeapon(target) ? 1.0 : 0.0, "Target spec equipped"));
+        if (target != null && target instanceof Player) {
+            Player targetPlayer = (Player) target;
+            observations.add(new Observation(index++, getHealthPercentage(targetPlayer), "Target's health percent"));
+            observations.add(new Observation(index++, isUsingMelee(targetPlayer) ? 1.0 : 0.0, "Target using melee"));
+            observations.add(new Observation(index++, isUsingRanged(targetPlayer) ? 1.0 : 0.0, "Target using ranged"));
+            observations.add(new Observation(index++, isUsingMagic(targetPlayer) ? 1.0 : 0.0, "Target using mage"));
+            observations
+                    .add(new Observation(index++, hasSpecialWeapon(targetPlayer) ? 1.0 : 0.0, "Target spec equipped"));
 
             // Target prayer status - Often inferred from overhead prayer icons, which might
             // not be directly exposed as a boolean per prayer type for other players.
             // These would typically require parsing overhead icons or more advanced
             // prediction.
-            observations.add(new Observation(index++, hasMeleePrayer(target) ? 1.0 : 0.0, "Target melee prayer"));
+            observations.add(new Observation(index++, hasMeleePrayer(targetPlayer) ? 1.0 : 0.0, "Target melee prayer"));
             observations
-                    .add(new Observation(index++, hasRangedPrayer(target) ? 1.0 : 0.0, "Target ranged prayer"));
-            observations.add(new Observation(index++, hasMagicPrayer(target) ? 1.0 : 0.0, "Target magic prayer"));
-            observations.add(new Observation(index++, hasSmitePrayer(target) ? 1.0 : 0.0, "Target smite prayer"));
-            observations.add(new Observation(index++, hasRedemptionPrayer(target) ? 1.0 : 0.0,
+                    .add(new Observation(index++, hasRangedPrayer(targetPlayer) ? 1.0 : 0.0, "Target ranged prayer"));
+            observations.add(new Observation(index++, hasMagicPrayer(targetPlayer) ? 1.0 : 0.0, "Target magic prayer"));
+            observations.add(new Observation(index++, hasSmitePrayer(targetPlayer) ? 1.0 : 0.0, "Target smite prayer"));
+            observations.add(new Observation(index++, hasRedemptionPrayer(targetPlayer) ? 1.0 : 0.0,
                     "Target redemption prayer"));
             observations
-                    .add(new Observation(index++, getSpecialAttackEnergy(target) / 100.0,
+                    .add(new Observation(index++, getSpecialAttackEnergy(targetPlayer) / 100.0,
                             "Target special energy percent"));
         } else {
             // Fill target observations with zeros if no target
             // Ensure this loop matches the number of target observations in the 'if (target
             // != null)' block
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < 11; i++) {
                 observations.add(new Observation(index++, 0.0, "Target observation " + i));
             }
         }
@@ -151,9 +153,12 @@ public class PvpObservations {
         // for generic players
         observations.add(new Observation(index++, getFrozenTicks(player), "Player's frozen ticks"));
         observations
-                .add(new Observation(index++, target != null ? getFrozenTicks(target) : 0.0, "Target's frozen ticks"));
+                .add(new Observation(index++,
+                        target != null && target instanceof Player ? getFrozenTicks((Player) target) : 0.0,
+                        "Target's frozen ticks"));
         observations.add(new Observation(index++, getFrozenImmunityTicks(player), "Player's frozen immunity ticks"));
-        observations.add(new Observation(index++, target != null ? getFrozenImmunityTicks(target) : 0.0,
+        observations.add(new Observation(index++,
+                target != null && target instanceof Player ? getFrozenImmunityTicks((Player) target) : 0.0,
                 "Target's frozen immunity ticks"));
 
         // Positional data
@@ -175,11 +180,14 @@ public class PvpObservations {
         observations.add(new Observation(index++, getFoodAttackDelay() / 10.0, "Food attack delay"));
 
         // Target combat cycle - Placeholders
-        if (target != null) {
+        if (target != null && target instanceof Player) {
+            Player targetPlayer = (Player) target;
             observations.add(
-                    new Observation(index++, getTargetAttackCycleTicks(target) / 10.0, "Target attack cycle ticks"));
+                    new Observation(index++, getTargetAttackCycleTicks(targetPlayer) / 10.0,
+                            "Target attack cycle ticks"));
             observations.add(
-                    new Observation(index++, getTargetPotionCycleTicks(target) / 10.0, "Target potion cycle ticks"));
+                    new Observation(index++, getTargetPotionCycleTicks(targetPlayer) / 10.0,
+                            "Target potion cycle ticks"));
         } else {
             observations.add(new Observation(index++, 0.0, "Target attack cycle ticks"));
             observations.add(new Observation(index++, 0.0, "Target potion cycle ticks"));
@@ -191,7 +199,9 @@ public class PvpObservations {
         observations.add(new Observation(index++, getTicksUntilHitOnPlayer() / 10.0, "Ticks until hit on player"));
         observations.add(new Observation(index++, justAttacked(player) ? 1.0 : 0.0, "Player just attacked"));
         observations.add(
-                new Observation(index++, target != null && justAttacked(target) ? 1.0 : 0.0, "Target just attacked"));
+                new Observation(index++,
+                        target != null && target instanceof Player && justAttacked((Player) target) ? 1.0 : 0.0,
+                        "Target just attacked"));
         observations.add(new Observation(index++, getTickNewAttackDamage() / 100.0, "Tick new attack damage"));
         observations.add(new Observation(index++, getDamageOnPlayerTick() / 100.0, "Damage on player tick"));
         observations.add(new Observation(index++, getDamageOnTargetTick() / 100.0, "Damage on target tick"));
@@ -223,7 +233,8 @@ public class PvpObservations {
 
         // Prayer correctness - Placeholders, specific to bot logic
         observations.add(new Observation(index++, isPrayerCorrect(player) ? 1.0 : 0.0, "Player prayer correct"));
-        observations.add(new Observation(index++, target != null && isPrayerCorrect(target) ? 1.0 : 0.0,
+        observations.add(new Observation(index++,
+                target != null && target instanceof Player && isPrayerCorrect((Player) target) ? 1.0 : 0.0,
                 "Target prayer correct"));
 
         // Damage scaling - Placeholder
@@ -354,12 +365,13 @@ public class PvpObservations {
 
         // Target gear defense stats - Placeholders, requires RuneMate to expose
         // target's equipment stats
-        if (target != null) {
-            observations.add(new Observation(index++, getTargetCurrentGearRangedDefence(target) / 100.0,
+        if (target != null && target instanceof Player) {
+            Player targetPlayer = (Player) target;
+            observations.add(new Observation(index++, getTargetCurrentGearRangedDefence(targetPlayer) / 100.0,
                     "Target current gear ranged defence"));
-            observations.add(new Observation(index++, getTargetCurrentGearMageDefence(target) / 100.0,
+            observations.add(new Observation(index++, getTargetCurrentGearMageDefence(targetPlayer) / 100.0,
                     "Target current gear mage defence"));
-            observations.add(new Observation(index++, getTargetCurrentGearMeleeDefence(target) / 100.0,
+            observations.add(new Observation(index++, getTargetCurrentGearMeleeDefence(targetPlayer) / 100.0,
                     "Target current gear melee defence"));
         } else {
             observations.add(new Observation(index++, 0.0, "Target current gear ranged defence"));
@@ -397,19 +409,22 @@ public class PvpObservations {
 
         // Vengeance status
         observations.add(new Observation(index++, isVengActive() ? 1.0 : 0.0, "Is player vengeance active"));
-        observations.add(new Observation(index++, target != null && isTargetVengActive(target) ? 1.0 : 0.0,
+        observations.add(new Observation(index++,
+                target != null && target instanceof Player && isTargetVengActive((Player) target) ? 1.0 : 0.0,
                 "Is target vengeance active"));
 
         // Spellbook status
         observations
                 .add(new Observation(index++, isPlayerLunarSpellbook() ? 1.0 : 0.0, "Is player using lunar spellbook"));
-        observations.add(new Observation(index++, target != null && isTargetLunarSpellbook(target) ? 1.0 : 0.0,
+        observations.add(new Observation(index++,
+                target != null && target instanceof Player && isTargetLunarSpellbook((Player) target) ? 1.0 : 0.0,
                 "Is target using lunar spellbook"));
 
         // Vengeance cooldowns
         observations.add(new Observation(index++, getPlayerVengCooldownTicks() / 10.0,
                 "Ticks until player vengeance available"));
-        observations.add(new Observation(index++, target != null ? getTargetVengCooldownTicks(target) / 10.0 : 0.0,
+        observations.add(new Observation(index++,
+                target != null && target instanceof Player ? getTargetVengCooldownTicks((Player) target) / 10.0 : 0.0,
                 "Ticks until target vengeance available"));
 
         // Attack availability
@@ -585,14 +600,6 @@ public class PvpObservations {
         return player.getHealthGauge().getPercent() / 100.0;
     }
 
-    private static Player getCurrentTarget() {
-        var target = Players.getLocal().getTarget();
-        if (target instanceof Player) {
-            return (Player) target;
-        }
-        return null;
-    }
-
     // Implemented prayer points
     private static double getPrayerPoints() {
         return Skill.PRAYER.getCurrentLevel();
@@ -725,7 +732,7 @@ public class PvpObservations {
     }
 
     // Fixed position calculation
-    private static double getPlayerToTargetDistance(Player player, Player target) {
+    private static double getPlayerToTargetDistance(Player player, Actor target) {
         if (player == null || target == null)
             return 0.0;
         return player.getPosition().distanceTo(target.getPosition());
@@ -742,8 +749,8 @@ public class PvpObservations {
     }
 
     // Fixed moving check
-    private static boolean isMoving(Player player) {
-        return player != null && player.isMoving();
+    private static boolean isMoving(Actor actor) {
+        return actor != null && actor.isMoving();
     }
 
     // Fixed frozen ticks with proper freeze state tracking
@@ -833,7 +840,7 @@ public class PvpObservations {
         return 0.0;
     }
 
-    private static boolean canMeleeTarget(Player player, Player target) {
+    private static boolean canMeleeTarget(Player player, Actor target) {
         if (player == null || target == null)
             return false;
         // Check if player is in melee range of target. Max melee range is usually 1
@@ -905,7 +912,7 @@ public class PvpObservations {
         return 0.0;
     }
 
-    private static boolean isAttackingTarget(Player player, Player target) {
+    private static boolean isAttackingTarget(Player player, Actor target) {
         if (player == null || target == null)
             return false;
         // Check if player's target is the given target and player is currently in
@@ -928,7 +935,7 @@ public class PvpObservations {
         return false;
     }
 
-    private static double getDestinationToTargetDistance(Player player, Player target) {
+    private static double getDestinationToTargetDistance(Player player, Actor target) {
         // Placeholder: Get distance to target destination
         return 0.0;
     }
@@ -1327,7 +1334,7 @@ public class PvpObservations {
 
     private static boolean isLmsRestrictions() {
         // Placeholder: Check game region or specific game state variable for LMS.
-        return false;
+        return true;
     }
 
     private static boolean isPvpArenaRules() {

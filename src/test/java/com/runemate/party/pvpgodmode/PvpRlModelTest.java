@@ -28,9 +28,10 @@ public class PvpRlModelTest {
         List<PvpObservations.Observation> mockObservations = createMockObservations();
 
         try {
+            // Pass null for the target, as it's not needed for this test
             PvpRlModel.ModelOutput output = rlModel.getAction(mockObservations);
             assertNotNull("Model output should not be null", output);
-            assertTrue("Action index should be valid", output.getActionIndex() >= 0);
+            assertTrue("Action indices should be a non-empty array", output.getActionIndices().length > 0);
         } catch (Exception e) {
             System.out.println("API server not running (expected in test environment): " + e.getMessage());
         }

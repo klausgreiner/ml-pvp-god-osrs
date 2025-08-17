@@ -647,6 +647,11 @@ public class PvpActions {
             Execution.delay(300);
             return true;
         }
+        // if (Inventory.contains("Saradomin brew")) {
+        // Inventory.getItems("Saradomin brew").first().interact("Drink");
+        // return true;
+        // }
+        // return false;
         return false;
     }
 
