@@ -1,11 +1,19 @@
 package com.runemate.party.pvpgodmode;
 
+import com.runemate.game.api.hybrid.entities.Actor;
+import com.runemate.game.api.hybrid.entities.Player;
+import com.runemate.game.api.hybrid.local.Varps;
+import com.runemate.game.api.hybrid.local.hud.interfaces.Equipment;
+import com.runemate.game.api.hybrid.local.hud.interfaces.Inventory;
+import com.runemate.game.api.hybrid.local.hud.interfaces.SpriteItem;
+import com.runemate.game.api.hybrid.region.Players;
 import com.runemate.game.api.script.Execution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class PvpActions {
 
@@ -121,163 +129,6 @@ public class PvpActions {
         actions.add(new Action(index++, "Redemption prayer", "Activate redemption prayer", true));
 
         return actions;
-    }
-
-    public static boolean executeAction(int actionIndex) {
-        List<Action> actions = getAvailableActions();
-        if (actionIndex < 0 || actionIndex >= actions.size()) {
-            logger.warn("Invalid action index: {}", actionIndex);
-            return false;
-        }
-
-        Action action = actions.get(actionIndex);
-        if (!action.isAvailable()) {
-            logger.warn("Action not available: {}", action.getName());
-            return false;
-        }
-
-        logger.info("Executing action: {}", action.getName());
-
-        switch (actionIndex) {
-            case 0: // No-op attack
-                return true;
-
-            case 1: // Mage attack
-                return executeMageAttack();
-
-            case 2: // Ranged attack
-                return executeRangedAttack();
-
-            case 3: // Melee attack
-                return executeMeleeAttack();
-
-            case 4: // No melee attack
-                return true;
-
-            case 5: // Basic melee attack
-                return executeMeleeAttack();
-
-            case 6: // Melee special attack
-                return executeMeleeSpecial();
-
-            case 7: // No ranged attack
-                return true;
-
-            case 8: // Basic ranged attack
-                return executeRangedAttack();
-
-            case 9: // Ranged special attack
-                return executeRangedSpecial();
-
-            case 10: // No mage attack
-                return true;
-
-            case 11: // Use ice spell
-                return executeIceBarrage();
-
-            case 12: // Use blood spell
-                return executeBloodBarrage();
-
-            case 13: // Use magic spec
-                return executeMagicSpec();
-
-            case 14: // No potion
-                return true;
-
-            case 15: // Use brew
-                return executeUseBrew();
-
-            case 16: // Use restore potion
-                return executeUseRestore();
-
-            case 17: // Use combat potion
-                return executeUseCombat();
-
-            case 18: // Use ranged potion
-                return executeUseRanged();
-
-            case 19: // Don't eat food
-                return true;
-
-            case 20: // Eat primary food
-                return executeEatFood();
-
-            case 21: // Don't karambwan
-                return true;
-
-            case 22: // Eat karambwan
-                return executeEatKarambwan();
-
-            case 23: // Don't use veng
-                return true;
-
-            case 24: // Use veng
-                return executeCastVengeance();
-
-            case 25: // No gear swap
-                return true;
-
-            case 26: // Use tank gear
-                return executeSwapToTank();
-
-            case 27: // Don't move
-                return true;
-
-            case 28: // Move next to target
-                return executeMoveNextTo();
-
-            case 29: // Move under target
-                return executeMoveUnder();
-
-            case 30: // Move to farcast tile
-                return executeMoveToFarcast();
-
-            case 31: // Move diagonal to target
-                return executeMoveDiagonal();
-
-            case 32: // Don't move (farcast)
-                return true;
-
-            case 33: // Farcast 2 tiles
-                return executeFarcast(2);
-
-            case 34: // Farcast 3 tiles
-                return executeFarcast(3);
-
-            case 35: // Farcast 4 tiles
-                return executeFarcast(4);
-
-            case 36: // Farcast 5 tiles
-                return executeFarcast(5);
-
-            case 37: // Farcast 6 tiles
-                return executeFarcast(6);
-
-            case 38: // Farcast 7 tiles
-                return executeFarcast(7);
-
-            case 39: // No-op prayer
-                return true;
-
-            case 40: // Pray mage
-                return executePrayMage();
-
-            case 41: // Pray ranged
-                return executePrayRanged();
-
-            case 42: // Pray melee
-                return executePrayMelee();
-
-            case 43: // Pray smite
-                return executePraySmite();
-
-            case 44: // Pray redemption
-                return executePrayRedemption();
-
-            default:
-                logger.warn("Unknown action index: {}", actionIndex);
-                return false;
-        }
     }
 
     public static boolean executeActionFromActionHead(int actionHeadIndex, int actionIndex) {
@@ -500,158 +351,200 @@ public class PvpActions {
 
     // Action availability checks
     private static boolean canUseMagic() {
-        return true;
+        Player local = Players.getLocal();
+        return local != null && local.getTarget() != null && local.getAnimationId() == -1 && !local.isMoving();
     }
 
     private static boolean canUseIceBarrage() {
-        return true;
+        return canUseMagic() && Inventory.contains("Water rune") && Inventory.contains("Death rune")
+                && Inventory.contains("Blood rune");
     }
 
     private static boolean canUseBloodBarrage() {
-        return true;
+        return canUseMagic();
     }
 
     private static boolean canUseMagicSpec() {
-        return true;
+        return canUseMagic() && com.runemate.game.api.osrs.local.SpecialAttack.getEnergy() >= 50;
     }
 
     private static boolean canUseRanged() {
-        return true;
+        Player local = Players.getLocal();
+        return local != null && local.getTarget() != null && local.getAnimationId() == -1;
     }
 
     private static boolean canUseRangedSpecial() {
-        return true;
+        return canUseRanged() && com.runemate.game.api.osrs.local.SpecialAttack.getEnergy() >= 50;
     }
 
     private static boolean canUseMelee() {
-        return true;
+        Player local = Players.getLocal();
+        if (local == null)
+            return false;
+        Actor target = local.getTarget();
+        return target != null && local.getAnimationId() == -1 && local.distanceTo(target) <= 1;
     }
 
     private static boolean canUseMeleeSpecial() {
-        return true;
+        return canUseMelee() && com.runemate.game.api.osrs.local.SpecialAttack.getEnergy() >= 50;
     }
 
     private static boolean hasBrew() {
-        return true;
+        return Inventory.contains(Pattern.compile("Saradomin brew\\(\\d\\)"));
     }
 
     private static boolean hasRestore() {
-        return true;
+        return Inventory.contains(Pattern.compile("Super restore\\(\\d\\)"));
     }
 
     private static boolean hasCombat() {
-        return true;
+        return Inventory.contains(Pattern.compile("Super combat potion\\(\\d\\)"));
     }
 
     private static boolean hasRanged() {
-        return true;
+        return Inventory.contains(Pattern.compile("Ranging potion\\(\\d\\)"));
     }
 
     private static boolean hasFood() {
-        return true;
+        return !Inventory.newQuery().actions("Eat").results().isEmpty();
     }
 
     private static boolean hasKarambwan() {
-        return true;
+        return Inventory.contains("Cooked karambwan");
     }
 
     private static boolean canCastVengeance() {
-        return true;
+        return Varps.getAt(2450).getValue() != 1;
     }
 
     private static boolean canMove() {
-        return true;
+        Player local = Players.getLocal();
+        return local != null && local.getTarget() != null && !local.isMoving();
     }
 
     // Action execution methods
     private static boolean executeMageAttack() {
+        if (!canUseMagic())
+            return false;
         logger.info("Executing magic attack");
-        Execution.delay(100);
-        return true;
+        SpriteItem weapon = Equipment.getItemIn(Equipment.Slot.WEAPON);
+        if (weapon != null) {
+            weapon.interact("Cast");
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executeIceBarrage() {
+        if (!canUseIceBarrage())
+            return false;
         logger.info("Casting Ice Barrage");
-        Execution.delay(100);
-        return true;
+        return castSpell("Ice Barrage");
     }
 
     private static boolean executeBloodBarrage() {
+        if (!canUseBloodBarrage())
+            return false;
         logger.info("Casting Blood Barrage");
-        Execution.delay(100);
-        return true;
+        return castSpell("Blood Barrage");
     }
 
     private static boolean executeMagicSpec() {
+        if (!canUseMagicSpec())
+            return false;
         logger.info("Using magic special attack");
-        Execution.delay(100);
-        return true;
+        return activateSpecialAttack();
     }
 
     private static boolean executeRangedAttack() {
+        if (!canUseRanged())
+            return false;
         logger.info("Executing ranged attack");
-        Execution.delay(100);
-        return true;
+        Actor target = Players.getLocal().getTarget();
+        if (target != null) {
+            target.interact("Attack");
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executeRangedSpecial() {
+        if (!canUseRangedSpecial())
+            return false;
         logger.info("Using ranged special attack");
-        Execution.delay(100);
-        return true;
+        if (activateSpecialAttack()) {
+            return executeRangedAttack();
+        }
+        return false;
     }
 
     private static boolean executeMeleeAttack() {
+        if (!canUseMelee())
+            return false;
         logger.info("Executing melee attack");
-        Execution.delay(100);
-        return true;
+        Actor target = Players.getLocal().getTarget();
+        if (target != null) {
+            target.interact("Attack");
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executeMeleeSpecial() {
+        if (!canUseMeleeSpecial())
+            return false;
         logger.info("Using melee special attack");
-        Execution.delay(100);
-        return true;
+        if (activateSpecialAttack()) {
+            return executeMeleeAttack();
+        }
+        return false;
     }
 
     private static boolean executeUseBrew() {
         logger.info("Using brew potion");
-        Execution.delay(100);
-        return true;
+        return consumeItem("Saradomin brew");
     }
 
     private static boolean executeUseRestore() {
         logger.info("Using restore potion");
-        Execution.delay(100);
-        return true;
+        return consumeItem("Super restore");
     }
 
     private static boolean executeUseCombat() {
         logger.info("Using combat potion");
-        Execution.delay(100);
-        return true;
+        return consumeItem("Super combat potion");
     }
 
     private static boolean executeUseRanged() {
         logger.info("Using ranged potion");
-        Execution.delay(100);
-        return true;
+        return consumeItem("Ranging potion");
     }
 
     private static boolean executeEatFood() {
         logger.info("Eating food");
-        Execution.delay(100);
-        return true;
+        SpriteItem food = Inventory.newQuery().actions("Eat").results().first();
+        if (food != null) {
+            if (food.interact("Eat")) {
+                Execution.delay(300);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean executeEatKarambwan() {
         logger.info("Eating karambwan");
-        Execution.delay(100);
-        return true;
+        return consumeItem("Cooked karambwan");
     }
 
     private static boolean executeCastVengeance() {
+        if (!canCastVengeance())
+            return false;
         logger.info("Using Vengeance");
-        Execution.delay(100);
-        return true;
+        return castSpell("Vengeance");
     }
 
     private static boolean executeSwapToTank() {
@@ -661,15 +554,17 @@ public class PvpActions {
     }
 
     private static boolean executeMoveNextTo() {
+        if (!canMove())
+            return false;
         logger.info("Moving next to target");
-        Execution.delay(100);
-        return true;
+        return moveToTarget(1);
     }
 
     private static boolean executeMoveUnder() {
+        if (!canMove())
+            return false;
         logger.info("Moving under target");
-        Execution.delay(100);
-        return true;
+        return moveToTarget(0);
     }
 
     private static boolean executeMoveToFarcast() {
@@ -718,5 +613,52 @@ public class PvpActions {
         logger.info("Activating redemption prayer");
         Execution.delay(100);
         return true;
+    }
+
+    private static boolean castSpell(String spellName) {
+        SpriteItem weapon = Equipment.getItemIn(Equipment.Slot.WEAPON);
+        if (weapon == null)
+            return false;
+        if (weapon.interact("Cast")) {
+            Execution.delayUntil(() -> Players.getLocal().getAnimationId() != -1, 1200);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean activateSpecialAttack() {
+        if (com.runemate.game.api.osrs.local.SpecialAttack.isActivated())
+            return true;
+        if (com.runemate.game.api.osrs.local.SpecialAttack.activate(true)) {
+            Execution.delayUntil(com.runemate.game.api.osrs.local.SpecialAttack::isActivated, 600);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean consumeItem(String itemName) {
+        SpriteItem item = Inventory.getItems(itemName).first();
+        if (item == null) {
+            item = Inventory.newQuery().names(Pattern.compile(itemName + ".*")).results().first();
+        }
+        if (item == null)
+            return false;
+        if (item.interact("Eat", "Drink")) {
+            Execution.delay(300);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean moveToTarget(int distance) {
+        Actor target = Players.getLocal().getTarget();
+        if (target == null)
+            return false;
+        if (distance == 0) {
+            return target.getPosition().interact("Walk here");
+        } else {
+            return target.getPosition().derive(target.getPosition().getX() + 1, target.getPosition().getY())
+                    .interact("Walk here");
+        }
     }
 }
