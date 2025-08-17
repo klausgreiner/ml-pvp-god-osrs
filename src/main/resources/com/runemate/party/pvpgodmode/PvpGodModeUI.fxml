@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Text?>
+<?import javafx.geometry.Insets?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" 
+            prefHeight="600.0" prefWidth="500.0" 
+            style="-fx-background-color: #2b2b2b;" 
+            xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+    
+    <children>
+        <VBox spacing="15" layoutX="15.0" layoutY="15.0" prefWidth="470.0">
+            
+            <!-- Title -->
+            <Text text="PVP God Mode - Bot Predictions" 
+                  style="-fx-fill: #00ff00; -fx-font-size: 18px; -fx-font-weight: bold;" />
+            
+            <!-- Status Section -->
+            <VBox spacing="5" style="-fx-background-color: #3c3c3c; -fx-padding: 10;">
+                <Text text="Bot Status" style="-fx-fill: #cccccc; -fx-font-weight: bold;" />
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Status:" style="-fx-text-fill: #cccccc;" />
+                    <Label fx:id="statusLabel" text="Inactive" style="-fx-text-fill: #ff4444;" />
+                </HBox>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="RL Model:" style="-fx-text-fill: #cccccc;" />
+                    <Label fx:id="modelLabel" text="Disabled" style="-fx-text-fill: #ffaa00;" />
+                </HBox>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Predictions:" style="-fx-text-fill: #cccccc;" />
+                    <Label fx:id="predictionCountLabel" text="0" style="-fx-text-fill: #00ff00;" />
+                </HBox>
+            </VBox>
+            
+            <!-- Predictions Section -->
+            <VBox spacing="5">
+                <Text text="Recent Predictions" style="-fx-fill: #cccccc; -fx-font-weight: bold;" />
+                <TextArea fx:id="predictionsArea" 
+                         prefRowCount="12" 
+                         prefColumnCount="50"
+                         editable="false"
+                         style="-fx-control-inner-background: #3c3c3c; -fx-text-fill: #ffffff; -fx-border-color: #555555;" />
+            </VBox>
+            
+            <!-- Control Buttons -->
+            <HBox spacing="10" alignment="CENTER">
+                <Button fx:id="clearButton" text="Clear Predictions" 
+                        onAction="#onClearPredictions"
+                        style="-fx-background-color: #555555; -fx-text-fill: white;" />
+                <Button fx:id="refreshButton" text="Refresh Status" 
+                        onAction="#onRefreshStatus"
+                        style="-fx-background-color: #555555; -fx-text-fill: white;" />
+            </HBox>
+            
+            <!-- Info Text -->
+            <Text text="The bot will display real-time predictions here when the RL model is active and making decisions." 
+                  style="-fx-fill: #888888; -fx-font-size: 12px;" 
+                  wrappingWidth="470.0" />
+        </VBox>
+    </children>
+</AnchorPane>

@@ -15,13 +15,15 @@ public class PvpCombatNode extends LeafTask {
 
     private static final Logger logger = LogManager.getLogger(PvpCombatNode.class);
     private final PvpGodModeSettings settings;
+
     private PvpRlModel rlModel;
     private long lastActionTime = 0;
-    private static final long ACTION_COOLDOWN = 300;
+    private static final long ACTION_COOLDOWN = 600; // Increased from 300ms to 600ms for better timing
     private Actor currentTarget;
 
     public PvpCombatNode(PvpGodModeSettings settings) {
         this.settings = settings;
+
     }
 
     @Override
@@ -42,7 +44,7 @@ public class PvpCombatNode extends LeafTask {
 
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastActionTime < ACTION_COOLDOWN) {
-            Execution.delay(50);
+            Execution.delay(100);
             return;
         }
 
@@ -71,7 +73,7 @@ public class PvpCombatNode extends LeafTask {
 
                 modelOutput = rlModel.getAction(observations);
 
-                logger.info("RL Model decision: Actions {}, Confidence: {:.1f}%, Win Probability: {:.1f}%",
+                logger.info("RL Model decision: Actions {}, Confidence: {}%, Win Probability: {}%",
                         java.util.Arrays.toString(modelOutput.getActionIndices()),
                         String.format("%.1f", modelOutput.getConfidence() * 100),
                         String.format("%.1f", modelOutput.getOutcomeProbabilities()[0] * 100));
@@ -91,7 +93,7 @@ public class PvpCombatNode extends LeafTask {
                 logger.warn("Failed to execute actions: {}", java.util.Arrays.toString(modelOutput.getActionIndices()));
             }
 
-            Execution.delay(50);
+            Execution.delay(100);
 
         } catch (Exception e) {
             logger.error("Error in PVP combat node: {}", e.getMessage(), e);
@@ -106,13 +108,18 @@ public class PvpCombatNode extends LeafTask {
         }
 
         boolean allSuccess = true;
-        for (int i = 0; i < actionIndices.length; i++) {
-            int actionIndex = actionIndices[i];
-            boolean success = PvpActions.executeActionFromActionHead(i, actionIndex);
-            if (!success) {
-                logger.warn("Failed to execute action {} at position {} (action head {})", actionIndex, i, i);
-                allSuccess = false;
+        try {
+            for (int i = 0; i < actionIndices.length; i++) {
+                int actionIndex = actionIndices[i];
+                boolean success = PvpActions.executeActionFromActionHead(i, actionIndex);
+
+                if (!success) {
+                    logger.warn("Failed to execute action {} at position {} (action head {})", actionIndex, i, i);
+                    allSuccess = false;
+                }
             }
+        } catch (Exception e) {
+            logger.warn("Failed to send prediction to UI: {}", e.getMessage());
         }
         return allSuccess;
     }
@@ -122,16 +129,64 @@ public class PvpCombatNode extends LeafTask {
     }
 
     private void validateAndAcquireTarget(Player player) {
-        if (currentTarget != null && (!currentTarget.isValid() || currentTarget.getHealthGauge() == null
-                || currentTarget.getHealthGauge().getPercent() == 0)) {
-            logger.info("Target {} is no longer valid or has died.", currentTarget.getName());
-            currentTarget = null;
+        // Only change target if current target is completely invalid or dead
+        if (currentTarget != null) {
+            if (!currentTarget.isValid()) {
+                logger.info("Target {} is no longer valid.", currentTarget.getName());
+                currentTarget = null;
+            } else if (currentTarget.getHealthGauge() != null && currentTarget.getHealthGauge().getPercent() == 0) {
+                logger.info("Target {} has died.", currentTarget.getName());
+                currentTarget = null;
+            } else if (currentTarget.distanceTo(player) > 20) {
+                logger.info("Target {} is too far away ({} tiles).", currentTarget.getName(),
+                        currentTarget.distanceTo(player));
+                currentTarget = null;
+            } else {
+                // Ensure we're still attacking the target
+                ensureAttackingTarget();
+            }
         }
 
+        // Only acquire new target if we don't have one
         if (currentTarget == null) {
-            currentTarget = Players.newQuery().filter(p -> !p.equals(player)).results().nearest();
-            if (currentTarget != null) {
+            // Look for players who are attacking us or nearby
+            Player newTarget = Players.newQuery()
+                    .filter(p -> !p.equals(player) && p.isValid())
+                    .filter(p -> p.getTarget() != null && p.getTarget().equals(player)) // Players attacking us
+                    .results()
+                    .nearest();
+
+            if (newTarget == null) {
+                // If no one is attacking us, look for nearby players
+                newTarget = Players.newQuery()
+                        .filter(p -> !p.equals(player) && p.isValid())
+                        .filter(p -> p.distanceTo(player) <= 10) // Within 10 tiles
+                        .results()
+                        .nearest();
+            }
+
+            if (newTarget != null) {
+                currentTarget = newTarget;
                 logger.info("New target acquired: {}", currentTarget.getName());
+
+                // Attack the target immediately
+                if (currentTarget.interact("Attack")) {
+                    logger.info("Attacking target: {}", currentTarget.getName());
+                }
+            }
+        }
+    }
+
+    private void ensureAttackingTarget() {
+        if (currentTarget == null || Players.getLocal() == null) {
+            return;
+        }
+
+        // Check if we're currently attacking the target
+        if (Players.getLocal().getTarget() == null || !Players.getLocal().getTarget().equals(currentTarget)) {
+            logger.debug("Re-engaging target: {}", currentTarget.getName());
+            if (currentTarget.interact("Attack")) {
+                logger.debug("Re-engaged target: {}", currentTarget.getName());
             }
         }
     }

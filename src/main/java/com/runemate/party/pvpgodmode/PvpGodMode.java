@@ -18,6 +18,8 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
 
     private boolean started = false;
     private PvpCombatNode currentCombatNode;
+    private PvpGodModeController uiController;
+    private PvpGodModeUI uiLauncher;
 
     @Override
     public TreeTask createRootTask() {
@@ -39,7 +41,12 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
     public void onStart(String... arguments) {
         super.onStart(arguments);
         getEventDispatcher().addListener(this);
+
+        // Initialize UI launcher
+        uiLauncher = new PvpGodModeUI(this);
+
         logger.info("PVP God Mode started successfully - waiting for settings confirmation");
+        logger.info("Use showPredictionsUI() method to display bot predictions interface");
     }
 
     @Override
@@ -53,6 +60,8 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
             started = true;
             logger.info("Settings confirmed, bot is now active!");
             logger.info("RL Model enabled: {}", settings.getRlModelEnabled());
+            updateStatus(true);
+            updateModelStatus(settings.getRlModelEnabled());
         } else {
             logger.warn("Settings confirmed but settings object is still null!");
         }
@@ -62,7 +71,6 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
     public void onStop() {
         logger.info("PVP God Mode stopped");
 
-        // Close the RL model connection if it exists
         if (currentCombatNode != null) {
             PvpRlModel rlModel = currentCombatNode.getRlModel();
             if (rlModel != null) {
@@ -71,7 +79,70 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
             }
         }
 
+        // Hide UI if visible
+        if (uiLauncher != null) {
+            uiLauncher.hideUI();
+        }
+
         super.onStop("0");
+    }
+
+    public void showPredictionsUI() {
+        if (uiLauncher != null) {
+            uiLauncher.showUI();
+            logger.info("Bot predictions UI displayed");
+        } else {
+            logger.warn("UI launcher not initialized");
+        }
+    }
+
+    public void hidePredictionsUI() {
+        if (uiLauncher != null) {
+            uiLauncher.hideUI();
+            logger.info("Bot predictions UI hidden");
+        }
+    }
+
+    public void updatePrediction(String prediction) {
+        if (uiController != null) {
+            uiController.addPrediction(prediction);
+        }
+        if (uiLauncher != null) {
+            uiLauncher.updatePrediction(prediction);
+        }
+        logger.info("Bot prediction: {}", prediction);
+    }
+
+    public void updateStatus(boolean active) {
+        if (uiController != null) {
+            uiController.updateStatus(active);
+        }
+        if (uiLauncher != null) {
+            uiLauncher.updateStatus(active);
+        }
+        logger.info("Bot status updated: {}", active ? "Active" : "Inactive");
+    }
+
+    public void updateModelStatus(boolean enabled) {
+        if (uiController != null) {
+            uiController.updateModelStatus(enabled);
+        }
+        if (uiLauncher != null) {
+            uiLauncher.updateModelStatus(enabled);
+        }
+        logger.info("RL Model status updated: {}", enabled ? "Enabled" : "Disabled");
+    }
+
+    public boolean isStarted() {
+        return started;
+    }
+
+    public PvpGodModeSettings getPvpSettings() {
+        return settings;
+    }
+
+    public void setUiController(PvpGodModeController controller) {
+        this.uiController = controller;
     }
 
     private static class DefaultPvpGodModeSettings implements PvpGodModeSettings {
@@ -84,6 +155,5 @@ public class PvpGodMode extends TreeBot implements SettingsListener {
         public String getModelPath() {
             return "FineTunedNh";
         }
-
     }
 }

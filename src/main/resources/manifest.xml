@@ -22,7 +22,8 @@
         REQUIRED: A brief description of what your bot does.
         Max 110 chars.
     -->
-    <description>Advanced PVP bot with intelligent combat and movement systems for ultimate domination.</description>
+    <description>Advanced PVP bot with intelligent combat and movement systems for ultimate
+        domination.</description>
 
     <!--
         REQUIRED: Current version of your bot.
@@ -102,6 +103,7 @@
         Don't add your manifest to this.
     -->
     <resources>
+        <resource>com/runemate/party/pvpgodmode/PvpGodModeUI.fxml</resource>
     </resources>
 
     <!--

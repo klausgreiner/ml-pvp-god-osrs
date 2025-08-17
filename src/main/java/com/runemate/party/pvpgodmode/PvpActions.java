@@ -7,6 +7,9 @@ import com.runemate.game.api.hybrid.local.hud.interfaces.Equipment;
 import com.runemate.game.api.hybrid.local.hud.interfaces.Inventory;
 import com.runemate.game.api.hybrid.local.hud.interfaces.SpriteItem;
 import com.runemate.game.api.hybrid.region.Players;
+import com.runemate.game.api.osrs.local.hud.interfaces.Prayer;
+
+import com.runemate.game.api.hybrid.location.Coordinate;
 import com.runemate.game.api.script.Execution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -132,34 +135,40 @@ public class PvpActions {
     }
 
     public static boolean executeActionFromActionHead(int actionHeadIndex, int actionIndex) {
-        switch (actionHeadIndex) {
-            case 0: // attack
-                return executeAttackAction(actionIndex);
-            case 1: // melee_attack_type
-                return executeMeleeAttackTypeAction(actionIndex);
-            case 2: // ranged_attack_type
-                return executeRangedAttackTypeAction(actionIndex);
-            case 3: // mage_attack_type
-                return executeMageAttackTypeAction(actionIndex);
-            case 4: // potion
-                return executePotionAction(actionIndex);
-            case 5: // food
-                return executeFoodAction(actionIndex);
-            case 6: // karambwan
-                return executeKarambwanAction(actionIndex);
-            case 7: // veng
-                return executeVengAction(actionIndex);
-            case 8: // gear
-                return executeGearAction(actionIndex);
-            case 9: // movement
-                return executeMovementAction(actionIndex);
-            case 10: // farcast_distance
-                return executeFarcastDistanceAction(actionIndex);
-            case 11: // prayer
-                return executePrayerAction(actionIndex);
-            default:
-                logger.warn("Unknown action head index: {}", actionHeadIndex);
-                return false;
+        try {
+            switch (actionHeadIndex) {
+                case 0: // attack
+                    return executeAttackAction(actionIndex);
+                case 1: // melee_attack_type
+                    return executeMeleeAttackTypeAction(actionIndex);
+                case 2: // ranged_attack_type
+                    return executeRangedAttackTypeAction(actionIndex);
+                case 3: // mage_attack_type
+                    return executeMageAttackTypeAction(actionIndex);
+                case 4: // potion
+                    return executePotionAction(actionIndex);
+                case 5: // food
+                    return executeFoodAction(actionIndex);
+                case 6: // karambwan
+                    return executeKarambwanAction(actionIndex);
+                case 7: // veng
+                    return executeVengAction(actionIndex);
+                case 8: // gear
+                    return executeGearAction(actionIndex);
+                case 9: // movement
+                    return executeMovementAction(actionIndex);
+                case 10: // farcast_distance
+                    return executeFarcastDistanceAction(actionIndex);
+                case 11: // prayer
+                    return executePrayerAction(actionIndex);
+                default:
+                    logger.warn("Unknown action head index: {}", actionHeadIndex);
+                    return false;
+            }
+        } catch (Exception e) {
+            logger.error("Error executing action head {} with action {}: {}", actionHeadIndex, actionIndex,
+                    e.getMessage());
+            return false;
         }
     }
 
@@ -283,6 +292,8 @@ public class PvpActions {
                 return true; // no_gear
             case 1:
                 return executeSwapToTank(); // use_tank_gear
+            case 2:
+                return executeSwapToMage(); // use_tank_gear
             default:
                 logger.warn("Unknown gear action index: {}", actionIndex);
                 return false;
@@ -390,19 +401,23 @@ public class PvpActions {
     }
 
     private static boolean hasBrew() {
-        return Inventory.contains(Pattern.compile("Saradomin brew\\(\\d\\)"));
+        return Inventory.contains(Pattern.compile("Saradomin brew\\(\\d+\\)")) ||
+                Inventory.contains("Saradomin brew");
     }
 
     private static boolean hasRestore() {
-        return Inventory.contains(Pattern.compile("Super restore\\(\\d\\)"));
+        return Inventory.contains(Pattern.compile("Super restore\\(\\d+\\)")) ||
+                Inventory.contains("Super restore");
     }
 
     private static boolean hasCombat() {
-        return Inventory.contains(Pattern.compile("Super combat potion\\(\\d\\)"));
+        return Inventory.contains(Pattern.compile("Super combat potion\\(\\d+\\)")) ||
+                Inventory.contains("Super combat potion");
     }
 
     private static boolean hasRanged() {
-        return Inventory.contains(Pattern.compile("Ranging potion\\(\\d\\)"));
+        return Inventory.contains(Pattern.compile("Ranging potion\\(\\d+\\)")) ||
+                Inventory.contains("Ranging potion");
     }
 
     private static boolean hasFood() {
@@ -427,11 +442,20 @@ public class PvpActions {
         if (!canUseMagic())
             return false;
         logger.info("Executing magic attack");
+
+        Actor target = Players.getLocal().getTarget();
+        if (target == null) {
+            logger.warn("No target for magic attack");
+            return false;
+        }
+
         SpriteItem weapon = Equipment.getItemIn(Equipment.Slot.WEAPON);
         if (weapon != null) {
-            weapon.interact("Cast");
-            Execution.delay(100);
-            return true;
+            if (weapon.interact("Cast")) {
+                // Wait for cast animation
+                Execution.delayUntil(() -> Players.getLocal().getAnimationId() != -1, 1200);
+                return true;
+            }
         }
         return false;
     }
@@ -440,6 +464,13 @@ public class PvpActions {
         if (!canUseIceBarrage())
             return false;
         logger.info("Casting Ice Barrage");
+
+        Actor target = Players.getLocal().getTarget();
+        if (target == null) {
+            logger.warn("No target for Ice Barrage");
+            return false;
+        }
+
         return castSpell("Ice Barrage");
     }
 
@@ -447,6 +478,13 @@ public class PvpActions {
         if (!canUseBloodBarrage())
             return false;
         logger.info("Casting Blood Barrage");
+
+        Actor target = Players.getLocal().getTarget();
+        if (target == null) {
+            logger.warn("No target for Blood Barrage");
+            return false;
+        }
+
         return castSpell("Blood Barrage");
     }
 
@@ -461,9 +499,14 @@ public class PvpActions {
         if (!canUseRanged())
             return false;
         logger.info("Executing ranged attack");
+
         Actor target = Players.getLocal().getTarget();
-        if (target != null) {
-            target.interact("Attack");
+        if (target == null) {
+            logger.warn("No target for ranged attack");
+            return false;
+        }
+
+        if (target.interact("Attack")) {
             Execution.delay(100);
             return true;
         }
@@ -484,9 +527,14 @@ public class PvpActions {
         if (!canUseMelee())
             return false;
         logger.info("Executing melee attack");
+
         Actor target = Players.getLocal().getTarget();
-        if (target != null) {
-            target.interact("Attack");
+        if (target == null) {
+            logger.warn("No target for melee attack");
+            return false;
+        }
+
+        if (target.interact("Attack")) {
             Execution.delay(100);
             return true;
         }
@@ -505,26 +553,54 @@ public class PvpActions {
 
     private static boolean executeUseBrew() {
         logger.info("Using brew potion");
-        return consumeItem("Saradomin brew");
+        if (Inventory.contains("Saradomin brew")) {
+            SpriteItem brew = Inventory.getItems("Saradomin brew").first();
+            if (brew != null && brew.interact("Drink")) {
+                Execution.delay(300);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean executeUseRestore() {
-        logger.info("Using restore potion");
-        return consumeItem("Super restore");
+        if (Inventory.contains("Super restore")) {
+            SpriteItem restore = Inventory.getItems("Super restore").first();
+            if (restore != null && restore.interact("Drink")) {
+                Execution.delay(300);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean executeUseCombat() {
         logger.info("Using combat potion");
-        return consumeItem("Super combat potion");
+        if (Inventory.contains("Super combat potion")) {
+            SpriteItem combat = Inventory.getItems("Super combat potion").first();
+            if (combat != null && combat.interact("Drink")) {
+                Execution.delay(300);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean executeUseRanged() {
         logger.info("Using ranged potion");
-        return consumeItem("Ranging potion");
+        if (Inventory.contains("Ranging potion")) {
+            SpriteItem ranged = Inventory.getItems("Ranging potion").first();
+            if (ranged != null && ranged.interact("Drink")) {
+                Execution.delay(300);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean executeEatFood() {
         logger.info("Eating food");
+
         SpriteItem food = Inventory.newQuery().actions("Eat").results().first();
         if (food != null) {
             if (food.interact("Eat")) {
@@ -537,7 +613,14 @@ public class PvpActions {
 
     private static boolean executeEatKarambwan() {
         logger.info("Eating karambwan");
-        return consumeItem("Cooked karambwan");
+        if (Inventory.contains("Cooked karambwan")) {
+            SpriteItem karambwan = Inventory.getItems("Cooked karambwan").first();
+            if (karambwan != null && karambwan.interact("Eat")) {
+                Execution.delay(300);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean executeCastVengeance() {
@@ -549,8 +632,12 @@ public class PvpActions {
 
     private static boolean executeSwapToTank() {
         logger.info("Swapping to tank gear");
-        Execution.delay(100);
-        return true;
+        return GearSwapper.executeSwapToMelee();
+    }
+
+    private static boolean executeSwapToMage() {
+        logger.info("Swapping to mage gear");
+        return GearSwapper.executeSwapToMage();
     }
 
     private static boolean executeMoveNextTo() {
@@ -568,60 +655,122 @@ public class PvpActions {
     }
 
     private static boolean executeMoveToFarcast() {
-        logger.info("Moving to farcast position");
-        Execution.delay(100);
+        var me = Players.getLocal();
+        var target = me.getTarget();
+        if (me == null || target == null)
+            return false;
+
+        Coordinate targetPos = target.getPosition();
+        Coordinate farcastTile = targetPos.derive(8, 0);
+        logger.info("Moving to farcast position: " + farcastTile);
+
+        com.runemate.game.api.hybrid.input.direct.DirectInput.sendMovement(farcastTile);
         return true;
     }
 
     private static boolean executeMoveDiagonal() {
-        logger.info("Moving diagonal to target");
-        Execution.delay(100);
+        var me = Players.getLocal();
+        var target = me.getTarget();
+        if (me == null || target == null)
+            return false;
+        Coordinate targetPos = target.getPosition();
+        Coordinate diagonal = targetPos.derive(1, 1);
+        logger.info("Moving diagonal to: " + diagonal);
+
+        com.runemate.game.api.hybrid.input.direct.DirectInput.sendMovement(diagonal);
         return true;
     }
 
     private static boolean executeFarcast(int tiles) {
         logger.info("Farcasting {} tiles away", tiles);
-        Execution.delay(100);
+
+        Player me = Players.getLocal();
+        Player opponent = Players.newQuery().targeting(me).results().nearest();
+        if (me == null || opponent == null)
+            return false;
+
+        Coordinate myPos = me.getPosition();
+        Coordinate oppPos = opponent.getPosition();
+
+        int dx = myPos.getX() - oppPos.getX();
+        int dy = myPos.getY() - oppPos.getY();
+
+        int stepX = dx > 0 ? tiles : -tiles;
+        int stepY = dy > 0 ? tiles : -tiles;
+
+        Coordinate farcastTile = new Coordinate(myPos.getX() + stepX, myPos.getY() + stepY, myPos.getPlane());
+        com.runemate.game.api.hybrid.input.direct.DirectInput.sendMovement(farcastTile);
         return true;
     }
 
     private static boolean executePrayMage() {
-        logger.info("Activating magic prayer");
-        Execution.delay(100);
-        return true;
+        logger.info("Activating Protect from Magic");
+        if (Prayer.PROTECT_FROM_MAGIC.activate()) {
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executePrayRanged() {
-        logger.info("Activating ranged prayer");
-        Execution.delay(100);
-        return true;
+        logger.info("Activating Protect from Missiles");
+        if (Prayer.PROTECT_FROM_MISSILES.activate()) {
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executePrayMelee() {
-        logger.info("Activating melee prayer");
-        Execution.delay(100);
-        return true;
+        logger.info("Activating Protect from Melee");
+        if (Prayer.PROTECT_FROM_MELEE.activate()) {
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executePraySmite() {
-        logger.info("Activating smite prayer");
-        Execution.delay(100);
-        return true;
+        logger.info("Activating Smite");
+        if (Prayer.SMITE.activate()) {
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean executePrayRedemption() {
-        logger.info("Activating redemption prayer");
-        Execution.delay(100);
-        return true;
+        logger.info("Activating Redemption");
+        if (Prayer.REDEMPTION.activate()) {
+            Execution.delay(100);
+            return true;
+        }
+        return false;
     }
 
     private static boolean castSpell(String spellName) {
-        SpriteItem weapon = Equipment.getItemIn(Equipment.Slot.WEAPON);
-        if (weapon == null)
+        Actor target = Players.getLocal().getTarget();
+        if (target == null) {
+            logger.warn("No target for spell: {}", spellName);
             return false;
+        }
+
+        SpriteItem weapon = Equipment.getItemIn(Equipment.Slot.WEAPON);
+        if (weapon == null) {
+            logger.warn("No weapon equipped for spell: {}", spellName);
+            return false;
+        }
+
+        // First cast the spell
         if (weapon.interact("Cast")) {
+            // Wait for cast animation
             Execution.delayUntil(() -> Players.getLocal().getAnimationId() != -1, 1200);
-            return true;
+
+            // Now click on the target
+            if (target.interact("Cast")) {
+                Execution.delay(300);
+                return true;
+            }
         }
         return false;
     }
@@ -633,25 +782,6 @@ public class PvpActions {
             Execution.delayUntil(com.runemate.game.api.osrs.local.SpecialAttack::isActivated, 600);
             return true;
         }
-        return false;
-    }
-
-    private static boolean consumeItem(String itemName) {
-        SpriteItem item = Inventory.getItems(itemName).first();
-        if (item == null) {
-            item = Inventory.newQuery().names(Pattern.compile(itemName + ".*")).results().first();
-        }
-        if (item == null)
-            return false;
-        if (item.interact("Eat", "Drink")) {
-            Execution.delay(300);
-            return true;
-        }
-        // if (Inventory.contains("Saradomin brew")) {
-        // Inventory.getItems("Saradomin brew").first().interact("Drink");
-        // return true;
-        // }
-        // return false;
         return false;
     }
 
