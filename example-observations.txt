@@ -1,0 +1,251 @@
+List<Observation> observations = new ArrayList<>();
+int index = 0;
+
+// Combat Style Observations
+observations.add(new Observation(index++, 1.0,  // Player using melee (1=true, 0=false)
+    "Player is currently using a melee weapon or performing melee attack"));
+observations.add(new Observation(index++, 0.0,  // Player using ranged
+    "Player is not using ranged combat"));
+observations.add(new Observation(index++, 0.0,  // Player using mage
+    "Player is not using magic combat"));
+observations.add(new Observation(index++, 1.0,  // Player spec equipped
+    "Player has a special attack weapon equipped (e.g., dragon claws)"));
+
+// Special Attack System
+observations.add(new Observation(index++, 0.75, // Special energy percent (0.0-1.0)
+    "Player has 75% special attack energy"));
+
+// Prayer Status
+observations.add(new Observation(index++, 1.0,  // Player melee prayer (Piety)
+    "Player has melee protection prayer active"));
+observations.add(new Observation(index++, 0.0,  // Player ranged prayer
+    "Player does not have ranged protection prayer active"));
+observations.add(new Observation(index++, 0.0,  // Player magic prayer
+    "Player does not have magic protection prayer active"));
+observations.add(new Observation(index++, 0.0,  // Player smite prayer
+    "Smite prayer is not active"));
+observations.add(new Observation(index++, 0.0,  // Player redemption prayer
+    "Redemption prayer is not active"));
+
+// Health Status
+observations.add(new Observation(index++, 0.65, // Player's health percent
+    "Player has 65% health remaining"));
+observations.add(new Observation(index++, 0.42, // Target's health percent
+    "Target has 42% health remaining"));
+
+// Target Combat Status
+observations.add(new Observation(index++, 0.0,  // Target using melee
+    "Target is not using melee"));
+observations.add(new Observation(index++, 1.0,  // Target using ranged
+    "Target is using ranged combat"));
+observations.add(new Observation(index++, 0.0,  // Target using mage
+    "Target is not using magic"));
+observations.add(new Observation(index++, 1.0,  // Target spec equipped
+    "Target has a special attack weapon equipped"));
+
+// Target Prayer Status
+observations.add(new Observation(index++, 0.0,  // Target melee prayer
+    "Target doesn't have melee prayer active"));
+observations.add(new Observation(index++, 1.0,  // Target ranged prayer
+    "Target has ranged protection prayer active"));
+observations.add(new Observation(index++, 0.0,  // Target magic prayer
+    "Target doesn't have magic prayer active"));
+observations.add(new Observation(index++, 0.0,  // Target smite prayer
+    "Target doesn't have smite active"));
+observations.add(new Observation(index++, 0.0,  // Target redemption prayer
+    "Target doesn't have redemption active"));
+observations.add(new Observation(index++, 0.90, // Target special percent
+    "Target has 90% special attack energy"));
+
+// Inventory Resources
+observations.add(new Observation(index++, 0.4,  // Range potion doses (0-4 doses scaled 0-1)
+    "Player has 4 doses of ranging potion (4/10=0.4)"));
+observations.add(new Observation(index++, 0.2,  // Combat potion doses
+    "Player has 2 doses of combat potion"));
+observations.add(new Observation(index++, 0.6,  // Super restore doses
+    "Player has 6 doses of super restore"));
+observations.add(new Observation(index++, 0.8,  // Brew doses
+    "Player has 8 doses of saradomin brew"));
+observations.add(new Observation(index++, 0.3,  // Food count (scaled 0-1)
+    "Player has 3 pieces of food"));
+observations.add(new Observation(index++, 0.4,  // Karambwan count
+    "Player has 4 karambwans"));
+observations.add(new Observation(index++, 0.75, // Prayer points (0.0-1.0)
+    "Player has 75 prayer points"));
+
+// Freeze Status
+observations.add(new Observation(index++, 0.0,  // Player's frozen ticks
+    "Player is not frozen"));
+observations.add(new Observation(index++, 3.0,  // Target's frozen ticks
+    "Target has 3 ticks of freeze remaining"));
+observations.add(new Observation(index++, 0.0,  // Player's frozen immunity
+    "Player has no freeze immunity"));
+observations.add(new Observation(index++, 0.0,  // Target's frozen immunity
+    "Target has no freeze immunity"));
+
+// Positioning
+observations.add(new Observation(index++, 1.0,  // Player location can melee
+    "Player is adjacent to target (can melee)"));
+
+// Player Stats (current levels)
+observations.add(new Observation(index++, 0.92, // Strength level (92/99)
+    "Player has 92 strength"));
+observations.add(new Observation(index++, 0.90, // Attack level
+    "Player has 90 attack"));
+observations.add(new Observation(index++, 0.85, // Defense level
+    "Player has 85 defense"));
+observations.add(new Observation(index++, 0.94, // Ranged level
+    "Player has 94 ranged"));
+observations.add(new Observation(index++, 0.96, // Magic level
+    "Player has 96 magic"));
+
+// Combat Timing
+observations.add(new Observation(index++, 0.4,  // Attack cycle ticks (4 ticks)
+    "Player's attack speed is 4 ticks (normal melee)"));
+observations.add(new Observation(index++, 0.3,  // Food cycle ticks (3 ticks)
+    "Eating food takes 3 ticks"));
+observations.add(new Observation(index++, 0.3,  // Potion cycle ticks
+    "Drinking potion takes 3 ticks"));
+observations.add(new Observation(index++, 0.1,  // Karambwan cycle ticks (1 tick)
+    "Eating karambwan takes 1 tick"));
+observations.add(new Observation(index++, 0.1,  // Food attack delay
+    "1 tick delay after eating before attacking"));
+
+// Target Combat Timing (estimated)
+observations.add(new Observation(index++, 0.4,  // Target attack cycle ticks
+    "Target's attack speed is 4 ticks"));
+observations.add(new Observation(index++, 0.0,  // Target potion cycle ticks
+    "Target not drinking potion"));
+
+// Damage Prediction
+observations.add(new Observation(index++, 0.42, // Pending damage on target
+    "42 damage pending on target from queued attacks"));
+observations.add(new Observation(index++, 0.2,  // Ticks until hit on target
+    "2 ticks until next hit lands on target"));
+observations.add(new Observation(index++, 0.3,  // Ticks until hit on player
+    "3 ticks until next hit lands on player"));
+
+// Recent Actions
+observations.add(new Observation(index++, 1.0,  // Player just attacked
+    "Player attacked in the last tick"));
+observations.add(new Observation(index++, 0.0,  // Target just attacked
+    "Target did not attack last tick"));
+observations.add(new Observation(index++, 0.25, // Tick new attack damage
+    "25 damage expected from new attack"));
+
+// Damage Tracking
+observations.add(new Observation(index++, 0.0,  // Damage on player this tick
+    "No damage on player this tick"));
+observations.add(new Observation(index++, 0.18, // Damage on target this tick
+    "18 damage dealt to target this tick"));
+observations.add(new Observation(index++, 1.0,  // Player attacking target
+    "Player is currently attacking target"));
+
+// Movement Status
+observations.add(new Observation(index++, 0.0,  // Player is moving
+    "Player is stationary"));
+observations.add(new Observation(index++, 1.0,  // Target is moving
+    "Target is moving"));
+
+// Game Mechanics
+observations.add(new Observation(index++, 1.0,  // Player has PID
+    "Player has priority in attack rotation"));
+observations.add(new Observation(index++, 1.0,  // Ice barrage usable
+    "Player can cast Ice Barrage"));
+observations.add(new Observation(index++, 1.0,  // Blood barrage usable
+    "Player can cast Blood Barrage"));
+
+// Positioning Distances
+observations.add(new Observation(index++, 0.3,  // Destination to target distance
+    "3 tiles between destination and target"));
+observations.add(new Observation(index++, 0.2,  // Player to destination distance
+    "2 tiles to planned destination"));
+observations.add(new Observation(index++, 0.1,  // Player to target distance
+    "1 tile between player and target"));
+
+// Prayer Effectiveness
+observations.add(new Observation(index++, 1.0,  // Player prayer correct
+    "Player has correct prayer for target's style"));
+observations.add(new Observation(index++, 0.0,  // Target prayer correct
+    "Target does not have correct prayer active"));
+
+// Damage Scaling
+observations.add(new Observation(index++, 1.5,  // Total damage dealt scale
+    "Player dealing 50% more damage than receiving"));
+
+// ... continue for all 176 observations ...
+
+// Constant Values (gear/stats)
+observations.add(new Observation(index++, 0.90, // Absolute attack level
+    "Base attack level: 90"));
+observations.add(new Observation(index++, 0.92, // Absolute strength level
+    "Base strength level: 92"));
+// ... other absolute stats ...
+
+// Equipment Status
+observations.add(new Observation(index++, 1.0,  // Using dragon bolts (e)
+    "Player has enchanted dragon bolts equipped"));
+observations.add(new Observation(index++, 0.0,  // Using opal bolts (e)
+    "Not using opal bolts"));
+observations.add(new Observation(index++, 0.0,  // Using diamond bolts (e)
+    "Not using diamond bolts"));
+
+// Special Weapons
+observations.add(new Observation(index++, 1.0,  // Mage spec weapon loadout
+    "Player has magic special weapon in loadout"));
+observations.add(new Observation(index++, 0.0,  // Ranged spec weapon loadout
+    "No ranged special weapon"));
+// ... other weapon types ...
+
+// Combat Stats (estimated)
+observations.add(new Observation(index++, 0.85, // Magic accuracy
+    "Estimated magic accuracy: 85%"));
+observations.add(new Observation(index++, 0.92, // Magic strength
+    "Estimated magic damage: 92%"));
+// ... other combat stats ...
+
+// Defense Stats
+observations.add(new Observation(index++, 0.75, // Magic gear ranged defence
+    "Magic gear provides 75% ranged defense"));
+// ... other defense stats ...
+
+// Game Mode
+observations.add(new Observation(index++, 1.0,  // LMS restrictions
+    "Fighting under Last Man Standing rules"));
+observations.add(new Observation(index++, 0.0,  // PvP Arena rules
+    "Not in PvP Arena"));
+
+// Vengeance Status
+observations.add(new Observation(index++, 0.0,  // Player vengeance active
+    "Player doesn't have vengeance active"));
+observations.add(new Observation(index++, 1.0,  // Target vengeance active
+    "Target has vengeance active"));
+
+// Spellbook
+observations.add(new Observation(index++, 0.0,  // Player lunar spellbook
+    "Player on standard spellbook"));
+observations.add(new Observation(index++, 0.0,  // Target lunar spellbook
+    "Target not on lunar spellbook"));
+
+// Vengeance Cooldowns
+observations.add(new Observation(index++, 0.0,  // Player veng cooldown
+    "Player vengeance available now"));
+observations.add(new Observation(index++, 0.5,  // Target veng cooldown
+    "Target has 5 tick veng cooldown"));
+
+// Attack Availability
+observations.add(new Observation(index++, 1.0,  // Blood magic available
+    "Blood spells available"));
+observations.add(new Observation(index++, 1.0,  // Ice magic available
+    "Ice spells available"));
+observations.add(new Observation(index++, 1.0,  // Magic spec available
+    "Magic special attack available"));
+// ... other attack types ...
+
+// Food Type
+observations.add(new Observation(index++, 1.0,  // Using anglerfish
+    "Primary food is anglerfish"));
+
+// Make sure to add all 176 observations
+logger.info("Generated {} observations", observations.size());
+return observations;

@@ -2,7 +2,6 @@ package com.runemate.party.pvpgodmode;
 
 import com.runemate.game.api.hybrid.entities.Player;
 import com.runemate.game.api.hybrid.entities.definitions.ItemDefinition;
-import com.runemate.game.api.hybrid.entities.status.OverheadIcon;
 import com.runemate.game.api.hybrid.local.Skill;
 import com.runemate.game.api.hybrid.local.Varps;
 import com.runemate.game.api.hybrid.local.hud.interfaces.Equipment;
@@ -12,7 +11,9 @@ import com.runemate.game.api.hybrid.region.Players;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PvpObservations {
@@ -26,6 +27,16 @@ public class PvpObservations {
             "dragon longsword", "dragon warhammer", "armadyl godsword", "bandos godsword",
             "saradomin sword", "zamorakian spear", "abyssal whip", "abyssal tentacle",
             "dark bow", "magic shortbow", "rune claws", "granite maul", "barrelchest anchor");
+
+    private static final Map<Player, FreezeState> freezeStates = new HashMap<>();
+    private static final int ICE_BARRAGE_GRAPHIC = 369;
+    private static final int ICE_BLITZ_GRAPHIC = 368;
+    private static final int ENTANGLE_GRAPHIC = 179;
+
+    private static class FreezeState {
+        long freezeStartTime;
+        int freezeDurationTicks;
+    }
 
     public static class Observation {
         private final int index;
@@ -82,15 +93,15 @@ public class PvpObservations {
         observations.add(new Observation(index++, hasSpecialWeapon(player) ? 1.0 : 0.0, "Player spec equipped"));
 
         // Special attack energy
-        observations.add(new Observation(index++, getSpecialAttackEnergy() / 100.0, "Special energy percent"));
+        observations.add(new Observation(index++, getSpecialAttackEnergy(player) / 100.0, "Special energy percent"));
 
         // Player prayer status
-        observations.add(new Observation(index++, isMeleePrayerActive(player) ? 1.0 : 0.0, "Player melee prayer"));
-        observations.add(new Observation(index++, isRangedPrayerActive(player) ? 1.0 : 0.0, "Player ranged prayer"));
-        observations.add(new Observation(index++, isMagicPrayerActive(player) ? 1.0 : 0.0, "Player magic prayer"));
-        observations.add(new Observation(index++, isSmitePrayerActive(player) ? 1.0 : 0.0, "Player smite prayer"));
+        observations.add(new Observation(index++, hasMeleePrayer(player) ? 1.0 : 0.0, "Player melee prayer"));
+        observations.add(new Observation(index++, hasRangedPrayer(player) ? 1.0 : 0.0, "Player ranged prayer"));
+        observations.add(new Observation(index++, hasMagicPrayer(player) ? 1.0 : 0.0, "Player magic prayer"));
+        observations.add(new Observation(index++, hasSmitePrayer(player) ? 1.0 : 0.0, "Player smite prayer"));
         observations.add(
-                new Observation(index++, isRedemptionPrayerActive(player) ? 1.0 : 0.0, "Player redemption prayer"));
+                new Observation(index++, hasRedemptionPrayer(player) ? 1.0 : 0.0, "Player redemption prayer"));
 
         // Health percentages
         observations.add(new Observation(index++, getHealthPercentage(player), "Player's health percent"));
@@ -109,13 +120,15 @@ public class PvpObservations {
             // These would typically require parsing overhead icons or more advanced
             // prediction.
             observations.add(new Observation(index++, hasMeleePrayer(target) ? 1.0 : 0.0, "Target melee prayer"));
-            observations.add(new Observation(index++, hasRangedPrayer(target) ? 1.0 : 0.0, "Target ranged prayer"));
+            observations
+                    .add(new Observation(index++, hasRangedPrayer(target) ? 1.0 : 0.0, "Target ranged prayer"));
             observations.add(new Observation(index++, hasMagicPrayer(target) ? 1.0 : 0.0, "Target magic prayer"));
             observations.add(new Observation(index++, hasSmitePrayer(target) ? 1.0 : 0.0, "Target smite prayer"));
+            observations.add(new Observation(index++, hasRedemptionPrayer(target) ? 1.0 : 0.0,
+                    "Target redemption prayer"));
             observations
-                    .add(new Observation(index++, hasRedemptionPrayer(target) ? 1.0 : 0.0, "Target redemption prayer"));
-            observations.add(new Observation(index++, getTargetSpecialAttackEnergy(target) / 100.0,
-                    "Target special energy percent"));
+                    .add(new Observation(index++, getSpecialAttackEnergy(target) / 100.0,
+                            "Target special energy percent"));
         } else {
             // Fill target observations with zeros if no target
             // Ensure this loop matches the number of target observations in the 'if (target
@@ -126,12 +139,12 @@ public class PvpObservations {
         }
 
         // Inventory and resource observations
-        observations.add(new Observation(index++, getRangedDoses(), "Range potion doses"));
-        observations.add(new Observation(index++, getCombatDoses(), "Combat potion doses"));
-        observations.add(new Observation(index++, getRestoreDoses(), "Super restore doses"));
-        observations.add(new Observation(index++, getBrewDoses(), "Brew doses"));
-        observations.add(new Observation(index++, getFoodCount(), "Food count"));
-        observations.add(new Observation(index++, getKarambwanCount(), "Karambwan count"));
+        observations.add(new Observation(index++, getRangedDoses() / 10.0, "Range potion doses"));
+        observations.add(new Observation(index++, getCombatDoses() / 10.0, "Combat potion doses"));
+        observations.add(new Observation(index++, getRestoreDoses() / 10.0, "Super restore doses"));
+        observations.add(new Observation(index++, getBrewDoses() / 10.0, "Brew doses"));
+        observations.add(new Observation(index++, getFoodCount() / 10.0, "Food count"));
+        observations.add(new Observation(index++, getKarambwanCount() / 10.0, "Karambwan count"));
         observations.add(new Observation(index++, getPrayerPoints() / 100.0, "Prayer points"));
 
         // Frozen status - Placeholders as direct API methods for this are not common
@@ -415,140 +428,6 @@ public class PvpObservations {
         // Food type
         observations.add(new Observation(index++, isFoodAnglerfish() ? 1.0 : 0.0, "Is primary food anglerfish"));
 
-        // Add remaining observations to reach 176
-        // Equipment and bolt status
-        observations
-                .add(new Observation(index++, isEnchantedDragonBolt() ? 1.0 : 0.0, "Is ranged using dragon bolts e"));
-        observations.add(new Observation(index++, isEnchantedOpalBolt() ? 1.0 : 0.0, "Is ranged using opal bolts e"));
-        observations
-                .add(new Observation(index++, isEnchantedDiamondBolt() ? 1.0 : 0.0, "Is ranged using diamond bolts e"));
-
-        // Special weapon loadouts
-        observations
-                .add(new Observation(index++, isMageSpecWeaponLoadout() ? 1.0 : 0.0, "Is mage spec weapon in loadout"));
-        observations.add(
-                new Observation(index++, isRangedSpecWeaponLoadout() ? 1.0 : 0.0, "Is ranged spec weapon in loadout"));
-        observations.add(new Observation(index++, isMageSpecWeaponNightmareStaff() ? 1.0 : 0.0,
-                "Is mage spec weapon volatile nightmare staff"));
-        observations.add(new Observation(index++, isRangedSpecWeaponZaryteCbow() ? 1.0 : 0.0,
-                "Is ranged spec weapon zaryte cbow"));
-        observations.add(
-                new Observation(index++, isRangedSpecWeaponBallista() ? 1.0 : 0.0, "Is ranged spec weapon ballista"));
-        observations.add(new Observation(index++, isRangedSpecWeaponMorrigansJavelin() ? 1.0 : 0.0,
-                "Is ranged spec weapon morrigan's javelins"));
-        observations.add(new Observation(index++, isRangedSpecWeaponDragonKnife() ? 1.0 : 0.0,
-                "Is ranged spec weapon dragon knife"));
-        observations.add(
-                new Observation(index++, isRangedSpecWeaponDarkBow() ? 1.0 : 0.0, "Is ranged spec weapon dark bow"));
-
-        // Melee special weapons
-        observations.add(new Observation(index++, isMeleeSpecDclaws() ? 1.0 : 0.0, "Is melee spec dragon claws"));
-        observations.add(new Observation(index++, isMeleeSpecDds() ? 1.0 : 0.0, "Is melee spec dds"));
-        observations.add(new Observation(index++, isMeleeSpecAgs() ? 1.0 : 0.0, "Is melee spec ags"));
-        observations.add(new Observation(index++, isMeleeSpecVls() ? 1.0 : 0.0, "Is melee spec vls"));
-        observations.add(new Observation(index++, isMeleeSpecStatHammer() ? 1.0 : 0.0, "Is melee spec stat hammer"));
-        observations.add(
-                new Observation(index++, isMeleeSpecAncientGodsword() ? 1.0 : 0.0, "Is melee spec ancient godsword"));
-        observations.add(new Observation(index++, isMeleeSpecGmaul() ? 1.0 : 0.0, "Is melee spec granite maul"));
-
-        // Special equipment
-        observations.add(new Observation(index++, isBloodFury() ? 1.0 : 0.0, "Is blood fury used for melee"));
-        observations.add(new Observation(index++, isDharoksSet() ? 1.0 : 0.0, "Is melee attacks using dharoks set"));
-        observations.add(new Observation(index++, isZurielStaff() ? 1.0 : 0.0, "Is zuriel's staff used for magic"));
-
-        // Expected stats
-        observations.add(new Observation(index++, getMagicAccuracy() / 100.0, "Expected magic accuracy"));
-        observations.add(new Observation(index++, getMagicStrength() / 100.0, "Expected magic strength"));
-        observations.add(new Observation(index++, getRangedAccuracy() / 100.0, "Expected ranged accuracy"));
-        observations.add(new Observation(index++, getRangedStrength() / 100.0, "Expected ranged strength"));
-        observations.add(new Observation(index++, getRangedAttackSpeed() / 10.0, "Expected ranged attack speed"));
-        observations.add(new Observation(index++, getRangedAttackRange() / 10.0, "Expected ranged attack range"));
-        observations.add(new Observation(index++, getMeleeAccuracy() / 100.0, "Expected melee accuracy"));
-        observations.add(new Observation(index++, getMeleeStrength() / 100.0, "Expected melee strength"));
-        observations.add(new Observation(index++, getMeleeAttackSpeed() / 10.0, "Expected melee attack speed"));
-
-        // Gear defense stats
-        observations.add(new Observation(index++, getMagicGearRangedDefence() / 100.0, "Magic gear ranged defence"));
-        observations.add(new Observation(index++, getMagicGearMageDefence() / 100.0, "Magic gear mage defence"));
-        observations.add(new Observation(index++, getMagicGearMeleeDefence() / 100.0, "Magic gear melee defence"));
-        observations.add(new Observation(index++, getRangedGearRangedDefence() / 100.0, "Ranged gear ranged defence"));
-        observations.add(new Observation(index++, getRangedGearMageDefence() / 100.0, "Ranged gear mage defence"));
-        observations.add(new Observation(index++, getRangedGearMeleeDefence() / 100.0, "Ranged gear melee defence"));
-        observations.add(new Observation(index++, getMeleeGearRangedDefence() / 100.0, "Melee gear ranged defence"));
-        observations.add(new Observation(index++, getMeleeGearMageDefence() / 100.0, "Melee gear mage defence"));
-        observations.add(new Observation(index++, getMeleeGearMeleeDefence() / 100.0, "Melee gear melee defence"));
-
-        // Target gear defense stats
-        if (target != null) {
-            observations.add(new Observation(index++, getTargetCurrentGearRangedDefence(target) / 100.0,
-                    "Target current gear ranged defence"));
-            observations.add(new Observation(index++, getTargetCurrentGearMageDefence(target) / 100.0,
-                    "Target current gear mage defence"));
-            observations.add(new Observation(index++, getTargetCurrentGearMeleeDefence(target) / 100.0,
-                    "Target current gear melee defence"));
-        } else {
-            observations.add(new Observation(index++, 0.0, "Target current gear ranged defence"));
-            observations.add(new Observation(index++, 0.0, "Target current gear mage defence"));
-            observations.add(new Observation(index++, 0.0, "Target current gear melee defence"));
-        }
-
-        // Target expected stats
-        observations.add(new Observation(index++, getTargetMagicAccuracy(), "Expected target magic accuracy"));
-        observations.add(new Observation(index++, getTargetMagicStrength(), "Expected target magic strength"));
-        observations.add(new Observation(index++, getTargetRangedAccuracy(), "Expected target ranged accuracy"));
-        observations.add(new Observation(index++, getTargetRangedStrength(), "Expected target ranged strength"));
-        observations.add(new Observation(index++, getTargetMeleeAccuracy(), "Expected target melee accuracy"));
-        observations.add(new Observation(index++, getTargetMeleeStrength(), "Expected target melee strength"));
-
-        // Target gear defense stats (more specific breakdown)
-        observations
-                .add(new Observation(index++, getTargetMagicGearRangedDefence(), "Target magic gear ranged defence"));
-        observations.add(new Observation(index++, getTargetMagicGearMageDefence(), "Target magic gear mage defence"));
-        observations.add(new Observation(index++, getTargetMagicGearMeleeDefence(), "Target magic gear melee defence"));
-        observations
-                .add(new Observation(index++, getTargetRangedGearRangedDefence(), "Target ranged gear ranged defence"));
-        observations.add(new Observation(index++, getTargetRangedGearMageDefence(), "Target ranged gear mage defence"));
-        observations
-                .add(new Observation(index++, getTargetRangedGearMeleeDefence(), "Target ranged gear melee defence"));
-        observations
-                .add(new Observation(index++, getTargetMeleeGearRangedDefence(), "Target melee gear ranged defence"));
-        observations.add(new Observation(index++, getTargetMeleeGearMageDefence(), "Target melee gear mage defence"));
-        observations.add(new Observation(index++, getTargetMeleeGearMeleeDefence(), "Target melee gear melee defence"));
-
-        // Game mode and restrictions
-        observations.add(new Observation(index++, isLmsRestrictions() ? 1.0 : 0.0, "Is fight using LMS restrictions"));
-        observations.add(new Observation(index++, isPvpArenaRules() ? 1.0 : 0.0, "Is fight using PvP Arena rules"));
-
-        // Vengeance status
-        observations.add(new Observation(index++, isVengActive() ? 1.0 : 0.0, "Is player vengeance active"));
-        observations.add(new Observation(index++, target != null && isTargetVengActive(target) ? 1.0 : 0.0,
-                "Is target vengeance active"));
-
-        // Spellbook status
-        observations
-                .add(new Observation(index++, isPlayerLunarSpellbook() ? 1.0 : 0.0, "Is player using lunar spellbook"));
-        observations.add(new Observation(index++, target != null && isTargetLunarSpellbook(target) ? 1.0 : 0.0,
-                "Is target using lunar spellbook"));
-
-        // Vengeance cooldowns
-        observations.add(new Observation(index++, getPlayerVengCooldownTicks() / 10.0,
-                "Ticks until player vengeance available"));
-        observations.add(new Observation(index++, target != null ? getTargetVengCooldownTicks(target) / 10.0 : 0.0,
-                "Ticks until target vengeance available"));
-
-        // Attack availability
-        observations
-                .add(new Observation(index++, canUseBloodMagicAttack() ? 1.0 : 0.0, "Is blood magic attack available"));
-        observations.add(new Observation(index++, canUseIceMagicAttack() ? 1.0 : 0.0, "Is ice magic attack available"));
-        observations
-                .add(new Observation(index++, canUseMagicSpecAttack() ? 1.0 : 0.0, "Is magic spec attack available"));
-        observations.add(new Observation(index++, canUseRangeAttack() ? 1.0 : 0.0, "Is range attack available"));
-        observations
-                .add(new Observation(index++, canUseRangeSpecAttack() ? 1.0 : 0.0, "Is range spec attack available"));
-        observations.add(new Observation(index++, canUseMeleeAttack() ? 1.0 : 0.0, "Is melee attack available"));
-        observations
-                .add(new Observation(index++, canUseMeleeSpecAttack() ? 1.0 : 0.0, "Is melee spec attack available"));
-
         logger.info("Generated {} observations (expected: {})", observations.size(), getExpectedObservationCount());
         return observations;
     }
@@ -604,48 +483,39 @@ public class PvpObservations {
     }
 
     // Fixed prayer detection methods
-    private static OverheadIcon.PrayerType getActivePrayerType(Player player) {
+    private static boolean hasMeleePrayer(Player player) {
         if (player == null)
-            return null;
-        OverheadIcon icon = player.getOverheadIcons().get(0);
-        return icon != null ? icon.getPrayerType() : null;
+            return false;
+        // Check if player has melee prayer available (level 1 prayer required)
+        return Skill.PRAYER.getCurrentLevel() >= 1;
     }
 
-    private static boolean isMeleePrayerActive(Player player) {
-        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
-        return prayer == OverheadIcon.PrayerType.MELEE ||
-                prayer == OverheadIcon.PrayerType.RANGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.MAGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.RANGE_MAGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.DEFLECT_MELEE;
+    private static boolean hasRangedPrayer(Player player) {
+        if (player == null)
+            return false;
+        // Check if player has ranged prayer available (level 1 prayer required)
+        return Skill.PRAYER.getCurrentLevel() >= 1;
     }
 
-    private static boolean isRangedPrayerActive(Player player) {
-        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
-        return prayer == OverheadIcon.PrayerType.RANGED ||
-                prayer == OverheadIcon.PrayerType.RANGE_MAGE ||
-                prayer == OverheadIcon.PrayerType.RANGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.RANGE_MAGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.DEFLECT_RANGE;
+    private static boolean hasMagicPrayer(Player player) {
+        if (player == null)
+            return false;
+        // Check if player has magic prayer available (level 1 prayer required)
+        return Skill.PRAYER.getCurrentLevel() >= 1;
     }
 
-    private static boolean isMagicPrayerActive(Player player) {
-        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
-        return prayer == OverheadIcon.PrayerType.MAGIC ||
-                prayer == OverheadIcon.PrayerType.RANGE_MAGE ||
-                prayer == OverheadIcon.PrayerType.MAGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.RANGE_MAGE_MELEE ||
-                prayer == OverheadIcon.PrayerType.DEFLECT_MAGE;
+    private static boolean hasSmitePrayer(Player player) {
+        if (player == null)
+            return false;
+        // Check if player has smite prayer available (level 52 prayer required)
+        return Skill.PRAYER.getCurrentLevel() >= 52;
     }
 
-    private static boolean isSmitePrayerActive(Player player) {
-        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
-        return prayer == OverheadIcon.PrayerType.SMITE;
-    }
-
-    private static boolean isRedemptionPrayerActive(Player player) {
-        OverheadIcon.PrayerType prayer = getActivePrayerType(player);
-        return prayer == OverheadIcon.PrayerType.REDEMPTION;
+    private static boolean hasRedemptionPrayer(Player player) {
+        if (player == null)
+            return false;
+        // Check if player has redemption prayer available (level 49 prayer required)
+        return Skill.PRAYER.getCurrentLevel() >= 49;
     }
 
     // Helper methods with null-safe implementations
@@ -779,13 +649,19 @@ public class PvpObservations {
     }
 
     // Fixed special attack energy
-    private static double getSpecialAttackEnergy() {
-        try {
-            Class<?> specialClass = Class.forName("com.runemate.game.api.osrs.local.SpecialAttack");
-            return (double) specialClass.getMethod("getEnergy").invoke(null);
-        } catch (Exception e) {
-            return 0.0; // Fallback if not available
+    private static double getSpecialAttackEnergy(Player player) {
+        if (player == null) {
+            return 0.0;
         }
+        if (player.equals(Players.getLocal())) {
+            try {
+                Class<?> specialClass = Class.forName("com.runemate.game.api.osrs.local.SpecialAttack");
+                return (double) specialClass.getMethod("getEnergy").invoke(null);
+            } catch (Exception e) {
+                return 0.0;
+            }
+        }
+        return 0.0;
     }
 
     // Fixed veng detection
@@ -832,15 +708,15 @@ public class PvpObservations {
 
     // Fixed attack availability
     private static boolean canUseMagicSpecAttack() {
-        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
+        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy(Players.getLocal()) >= 50;
     }
 
     private static boolean canUseRangeSpecAttack() {
-        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
+        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy(Players.getLocal()) >= 50;
     }
 
     private static boolean canUseMeleeSpecAttack() {
-        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy() >= 50;
+        return hasSpecialWeapon(Players.getLocal()) && getSpecialAttackEnergy(Players.getLocal()) >= 50;
     }
 
     // Fixed food type detection
@@ -865,54 +741,60 @@ public class PvpObservations {
                 isMagicAnimation(anim));
     }
 
-    // // Fixed attacking target check
-    // private static boolean isAttackingTarget(Player player, Player target) {
-    // return player != null &&
-    // target != null &&
-    // player.getTarget() != null &&
-    // player.getTarget().equals(target) &&
-    // justAttacked(player);
-    // }
-
     // Fixed moving check
     private static boolean isMoving(Player player) {
         return player != null && player.isMoving();
     }
 
-    // Fixed frozen ticks (placeholder)
+    // Fixed frozen ticks with proper freeze state tracking
     private static double getFrozenTicks(Player player) {
-        // Placeholder - requires game state tracking
-        return 0.0;
+        if (player == null)
+            return 0.0;
+
+        // Check if player is local and use Varps for freeze detection
+        if (player.equals(Players.getLocal())) {
+            int freezeTicks = Varps.getAt(2458).getValue();
+            if (freezeTicks > 0)
+                return freezeTicks;
+        }
+
+        // Get current freeze graphic - using animation ID as fallback since
+        // getGraphic() may not be available
+        int activeGraphic = player.getAnimationId();
+
+        // Check for freeze graphics
+        if (activeGraphic != 0 &&
+                (activeGraphic == ICE_BARRAGE_GRAPHIC ||
+                        activeGraphic == ICE_BLITZ_GRAPHIC ||
+                        activeGraphic == ENTANGLE_GRAPHIC)) {
+
+            // Initialize freeze state if new
+            FreezeState state = freezeStates.computeIfAbsent(player, k -> new FreezeState());
+
+            // Set duration based on spell type
+            if (state.freezeDurationTicks == 0) {
+                state.freezeStartTime = System.currentTimeMillis();
+                state.freezeDurationTicks = (activeGraphic == ICE_BARRAGE_GRAPHIC) ? 20
+                        : (activeGraphic == ICE_BLITZ_GRAPHIC) ? 15 : 18;
+            }
+
+            // Calculate remaining ticks
+            long elapsedMillis = System.currentTimeMillis() - state.freezeStartTime;
+            double elapsedTicks = elapsedMillis / 600.0; // 600ms per tick
+            double remaining = state.freezeDurationTicks - elapsedTicks;
+
+            return Math.max(0, remaining);
+        } else {
+            // Clear state when no freeze graphic
+            freezeStates.remove(player);
+            return 0.0;
+        }
     }
 
     // For target prayers, you'd typically rely on their overhead prayer icons (if
     // RuneMate exposes them).
     // As of now, direct boolean checks for opponent's specific prayers are not
     // commonly available.
-    private static boolean hasMeleePrayer(Player player) {
-        return false;
-    } // Placeholder
-
-    private static boolean hasRangedPrayer(Player player) {
-        return false;
-    } // Placeholder
-
-    private static boolean hasMagicPrayer(Player player) {
-        return false;
-    } // Placeholder
-
-    private static boolean hasSmitePrayer(Player player) {
-        return false;
-    } // Placeholder
-
-    private static boolean hasRedemptionPrayer(Player player) {
-        return false;
-    } // Placeholder
-
-    private static double getTargetSpecialAttackEnergy(Player target) {
-        // RuneMate API might not expose target's special attack energy.
-        return 0.0; // Placeholder
-    }
 
     private static int getBrewDoses() {
         return getDoses("Saradomin brew (4)", "Saradomin brew (3)", "Saradomin brew (2)", "Saradomin brew (1)");
@@ -937,7 +819,17 @@ public class PvpObservations {
     }
 
     private static double getFrozenImmunityTicks(Player player) {
-        // Placeholder: Similar to frozen ticks.
+        if (player == null)
+            return 0.0;
+
+        // Check if player is local and use Varps for immunity detection
+        if (player.equals(Players.getLocal())) {
+            int immunityTicks = Varps.getAt(2459).getValue(); // Assuming 2459 is immunity varp
+            if (immunityTicks > 0)
+                return immunityTicks;
+        }
+
+        // Placeholder: Similar to frozen ticks but for immunity tracking
         return 0.0;
     }
 
